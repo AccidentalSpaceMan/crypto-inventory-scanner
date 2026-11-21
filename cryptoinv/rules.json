@@ -513,5 +513,75 @@
       {"regex": "\\brejectUnauthorized\\s*:\\s*false\\b", "algorithm": "TLS_NO_VERIFY"},
       {"regex": "\\bcheckServerIdentity\\s*:\\s*\\(\\s*\\)\\s*=>\\s*(?:undefined|null|\\{\\s*\\})", "algorithm": "TLS_NO_VERIFY"}
     ]
+  },
+
+  "go": {
+    "_comment": "Go crypto lives in packages imported by path. 'packages': any use (and the import) of the package means these ids; a path also covers its sub-packages. 'symbols': a specific name overrides its package. 'calls': functions whose arguments hold details. A value can be one id or a list.",
+    "packages": {
+      "crypto/md5": "MD5", "crypto/sha1": "SHA1", "crypto/sha256": "SHA256", "crypto/sha512": "SHA512",
+      "crypto/sha3": "SHA3", "golang.org/x/crypto/sha3": "SHA3",
+      "golang.org/x/crypto/blake2b": "BLAKE2", "golang.org/x/crypto/blake2s": "BLAKE2",
+      "crypto/des": "DES", "crypto/rc4": "RC4", "crypto/aes": "AES",
+      "golang.org/x/crypto/blowfish": "OLD_BLOCK", "golang.org/x/crypto/cast5": "OLD_BLOCK",
+      "golang.org/x/crypto/chacha20": "CHACHA20", "golang.org/x/crypto/chacha20poly1305": "CHACHA20_POLY1305",
+      "crypto/hmac": "HMAC", "crypto/hkdf": "HKDF", "golang.org/x/crypto/hkdf": "HKDF",
+      "crypto/pbkdf2": "PBKDF2", "golang.org/x/crypto/pbkdf2": "PBKDF2",
+      "golang.org/x/crypto/scrypt": "SCRYPT", "golang.org/x/crypto/bcrypt": "BCRYPT", "golang.org/x/crypto/argon2": "ARGON2",
+      "crypto/rsa": "RSA", "crypto/dsa": "DSA", "crypto/ecdsa": "ECC", "crypto/elliptic": "ECC", "crypto/ecdh": "ECDH",
+      "crypto/ed25519": "ED25519", "golang.org/x/crypto/ed25519": "ED25519",
+      "golang.org/x/crypto/curve25519": "X25519", "golang.org/x/crypto/nacl/box": "X25519",
+      "crypto/mlkem": "MLKEM", "github.com/cloudflare/circl/kem/mlkem": "MLKEM",
+      "github.com/cloudflare/circl/sign/mldsa": "MLDSA", "github.com/cloudflare/circl/sign/slhdsa": "SLHDSA",
+      "crypto/rand": "CSPRNG",
+      "math/rand": "INSECURE_RANDOM", "math/rand/v2": "INSECURE_RANDOM"
+    },
+    "_secret_context_comment": "These packages are only reported when the code looks like it's making a secret (and never on the import line).",
+    "secret_context": ["math/rand", "math/rand/v2"],
+    "symbols": {
+      "crypto/sha256.New224": "SHA224", "crypto/sha256.Sum224": "SHA224",
+      "crypto/sha512.New384": "SHA384", "crypto/sha512.Sum384": "SHA384",
+      "crypto/sha512.New512_224": "SHA512T", "crypto/sha512.Sum512_224": "SHA512T",
+      "crypto/sha512.New512_256": "SHA512T", "crypto/sha512.Sum512_256": "SHA512T",
+      "crypto/des.NewTripleDESCipher": "TDES",
+      "crypto/cipher.NewCBCEncrypter": "CBC", "crypto/cipher.NewCBCDecrypter": "CBC",
+      "crypto/cipher.NewCTR": "UNAUTH_MODE", "crypto/cipher.NewOFB": "UNAUTH_MODE",
+      "crypto/cipher.NewCFBEncrypter": "UNAUTH_MODE", "crypto/cipher.NewCFBDecrypter": "UNAUTH_MODE",
+      "crypto/cipher.NewGCM": "AES_GCM", "crypto/cipher.NewGCMWithNonceSize": "AES_GCM",
+      "crypto/cipher.NewGCMWithTagSize": "AES_GCM", "crypto/cipher.NewGCMWithRandomNonce": "AES_GCM",
+      "crypto/ecdh.X25519": "X25519",
+      "crypto/dsa.L1024N160": "DSA_WEAK",
+      "crypto/x509.MD5WithRSA": ["MD5", "RSA"], "crypto/x509.SHA1WithRSA": ["SHA1", "RSA"],
+      "crypto/x509.DSAWithSHA1": ["SHA1", "DSA"], "crypto/x509.ECDSAWithSHA1": ["SHA1", "ECC"],
+      "crypto/x509.SHA256WithRSA": ["SHA256", "RSA"], "crypto/x509.SHA384WithRSA": ["SHA384", "RSA"],
+      "crypto/x509.SHA512WithRSA": ["SHA512", "RSA"], "crypto/x509.ECDSAWithSHA256": ["SHA256", "ECC"],
+      "crypto/x509.ECDSAWithSHA384": ["SHA384", "ECC"], "crypto/x509.PureEd25519": "ED25519",
+      "crypto/tls.VersionSSL30": "TLS_OLD", "crypto/tls.VersionTLS10": "TLS_OLD", "crypto/tls.VersionTLS11": "TLS_OLD",
+      "crypto/tls.VersionTLS12": "TLS_MODERN", "crypto/tls.VersionTLS13": "TLS_MODERN",
+      "crypto/tls.X25519MLKEM768": "MLKEM", "crypto/tls.X25519": "X25519",
+      "crypto/tls.CurveP256": "ECDH", "crypto/tls.CurveP384": "ECDH", "crypto/tls.CurveP521": "ECDH"
+    },
+    "calls": {
+      "crypto/hmac.New": {"algorithm": "HMAC", "hash_arg": 0, "variants": {"SHA1": "HMAC_SHA1", "MD5": "HMAC_MD5"}},
+      "crypto/pbkdf2.Key": {"algorithm": "PBKDF2", "hash_arg": 0, "iterations_arg": 3},
+      "golang.org/x/crypto/pbkdf2.Key": {"algorithm": "PBKDF2", "hash_arg": 4, "iterations_arg": 2},
+      "crypto/hkdf.Key": {"algorithm": "HKDF", "hash_arg": 0},
+      "crypto/hkdf.Extract": {"algorithm": "HKDF", "hash_arg": 0},
+      "crypto/hkdf.Expand": {"algorithm": "HKDF", "hash_arg": 0},
+      "golang.org/x/crypto/hkdf.New": {"algorithm": "HKDF", "hash_arg": 0},
+      "golang.org/x/crypto/hkdf.Extract": {"algorithm": "HKDF", "hash_arg": 0},
+      "golang.org/x/crypto/hkdf.Expand": {"algorithm": "HKDF", "hash_arg": 0},
+      "crypto/rsa.GenerateKey": {"algorithm": "RSA", "key_size_arg": 1},
+      "crypto/rsa.GenerateMultiPrimeKey": {"algorithm": "RSA", "key_size_arg": 2}
+    },
+    "_tls_suite_parts_comment": "Words inside crypto/tls cipher-suite names, e.g. TLS_RSA_WITH_RC4_128_SHA contains RC4. A suite starting TLS_RSA_WITH also means static RSA key exchange.",
+    "tls_suite_parts": {"RC4": "RC4", "3DES": "TDES", "CBC": "CBC", "GCM": "AES_GCM", "CHACHA20": "CHACHA20_POLY1305"},
+    "key_size": {
+      "RSA": {"min": 2048, "below": "RSA_WEAK"}
+    },
+    "pbkdf2": {"min": 600000, "below": "PBKDF2", "otherwise": "PBKDF2_STRONG"},
+    "patterns": [
+      {"regex": "\\bInsecureSkipVerify\\s*:\\s*true\\b", "algorithm": "TLS_NO_VERIFY"},
+      {"regex": "\\bInsecureSkipVerify\\s*=\\s*true\\b", "algorithm": "TLS_NO_VERIFY"}
+    ]
   }
 }

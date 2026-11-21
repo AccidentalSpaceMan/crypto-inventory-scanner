@@ -7,7 +7,7 @@ algorithm **BROKEN / LEGACY / CURRENT**. It also flags what a future quantum com
 
 Why? The first step in any post-quantum migration is an **inventory**: you can't replace RSA
 or fix MD5 until you know where it lives. This tool automates that step for **Python, Java,
-JavaScript and TypeScript** code. It can
+JavaScript, TypeScript and Go** code. It can
 also write the result as a **CBOM** (cryptographic bill of materials) in the standard
 [CycloneDX 1.6](https://cyclonedx.org/capabilities/cbom/) format, so other tools can read it.
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python -m cryptoinv scan PATH                     # a folder, or a single .py / .java / .js / .ts file
+python -m cryptoinv scan PATH                     # a folder, or a single .py / .java / .js / .ts / .go file
 python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
@@ -222,16 +222,43 @@ What it understands:
 - **TLS:** `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED = '0'`, no-op
   `checkServerIdentity`, and old versions in `minVersion` / `maxVersion` / `secureProtocol`.
 
+### Go
+
+Go keeps its crypto in packages imported by path (`"crypto/md5"`, `"golang.org/x/crypto/bcrypt"`),
+which makes it the most straightforward language to scan. `.go` files are masked like Java (Go's
+backtick raw strings count as strings), then:
+
+1. **Imports tell it what names mean**, including aliases (`mrand "math/rand"`) and versioned
+   paths (`"math/rand/v2"` is used as `rand`). Each import of a crypto package is itself a
+   finding, just like an import in Python.
+2. **Every `package.Name` is looked up**: first the exact name (`sha256.Sum224` is SHA-224,
+   `cipher.NewCBCEncrypter` is CBC, `cipher.NewGCM` is AES-GCM), then the package (anything else
+   in `crypto/sha256` is SHA-256). A path also covers its sub-packages, so
+   `circl/kem/mlkem/mlkem768` is ML-KEM.
+3. **Some calls are read in detail:** `rsa.GenerateKey(rand.Reader, 1024)` is RSA under 2048
+   bits, `hmac.New(sha1.New, key)` is HMAC-SHA1 (not SHA-1 on its own), and `pbkdf2.Key(...)`
+   reports its iteration count (both the standard library and `golang.org/x/crypto` versions).
+
+Go has two packages called `rand`: **`crypto/rand`** (secure) and **`math/rand`** (predictable).
+Because names are resolved through each file's own imports, they're never confused, and
+`math/rand` is only flagged when it's making a token, key, OTP or similar.
+
+Also covered: `crypto/mlkem` and the hybrid TLS group `tls.X25519MLKEM768`, Cloudflare CIRCL's
+ML-DSA / SLH-DSA, `crypto/ecdh` (X25519 vs. NIST curves), `crypto/dsa` parameter sizes,
+`x509.SHA1WithRSA`-style signature algorithms, `tls.Config{InsecureSkipVerify: true}`, old
+`tls.VersionTLS10/11` and weak cipher suites (`TLS_RSA_WITH_RC4_128_SHA` is RC4 plus static RSA
+key exchange). The `vendor/` folder of copied dependencies is skipped.
+
 ### Limitations
 
 - It's static analysis: values computed at runtime (`key_size=bits`) can't be read, so those
   findings fall back to the algorithm's normal grade.
 - The `random`-for-secrets and password-hash checks are name-based heuristics. They can miss
   cases or occasionally flag harmless code.
-- Java and JavaScript are matched by text patterns, not fully parsed. Links across lines (a
+- Java, JavaScript and Go are matched by text patterns, not fully parsed. Links across lines (a
   key-pair variable and its `initialize` call, a constant and where it's used) work within one
   file, not across files.
-- Python, Java, JavaScript and TypeScript for now.
+- Python, Java, JavaScript, TypeScript and Go for now.
 
 ## Tests
 
@@ -240,8 +267,9 @@ python -m pytest
 ```
 
 The sample files in [`tests/samples/`](tests/samples) (Python),
-[`tests/samples_java/`](tests/samples_java) (Java) and [`tests/samples_js/`](tests/samples_js)
-(JavaScript and TypeScript) contain known weak and strong crypto. Each
+[`tests/samples_java/`](tests/samples_java) (Java), [`tests/samples_js/`](tests/samples_js)
+(JavaScript and TypeScript) and [`tests/samples_go/`](tests/samples_go) (Go) contain known weak
+and strong crypto. Each
 line ends with an `expect: ...` comment naming what the scanner must find there, and the tests
 check the scanner finds exactly that: nothing missed, nothing extra. CBOM output is checked
 against the official CycloneDX 1.6 schema. CI runs the suite on
@@ -253,5 +281,5 @@ Python 3.10 to 3.14 (Linux) and Windows.
 - [x] `--cbom out.json`: CycloneDX 1.6 CBOM output, schema-validated in the tests
 - [x] Java scanning (JCA, Commons Codec, Guava, Bouncy Castle PQC)
 - [x] JavaScript / TypeScript scanning (Node crypto, WebCrypto, JWT, crypto-js)
-- [ ] Go scanning
+- [x] Go scanning (standard library, golang.org/x/crypto, CIRCL post-quantum)
 - [ ] Certificates and keys (.pem / .crt: key type, size and signature hash)

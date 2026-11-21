@@ -22,7 +22,7 @@ from .rules import Algorithm, Detector, Rules, load_rules
 # Folders that hold other people's code or generated files, not the project itself.
 SKIP_DIRS = {".git", ".hg", ".svn", ".venv", "venv", "env", "__pycache__", "node_modules",
              "site-packages", ".tox", ".nox", ".mypy_cache", ".pytest_cache", "build", "dist",
-             "target", ".gradle", ".idea"}
+             "target", ".gradle", ".idea", "vendor"}
 
 # Words in a variable or function name that suggest a value is a secret.
 SECRET_WORDS = {"key", "keys", "secret", "secrets", "token", "tokens", "password", "passwords",
@@ -352,7 +352,8 @@ def scan_source(source: bytes | str, path: str, rules: Rules) -> list[Finding]:
 
 LANGUAGES = {".py": "Python", ".java": "Java",
              ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".jsx": "JavaScript",
-             ".ts": "TypeScript", ".mts": "TypeScript", ".cts": "TypeScript", ".tsx": "TypeScript"}
+             ".ts": "TypeScript", ".mts": "TypeScript", ".cts": "TypeScript", ".tsx": "TypeScript",
+             ".go": "Go"}
 # Minified bundles and type declarations aren't hand-written code: skip them in folder scans.
 SKIP_SUFFIXES = (".min.js", ".d.ts", ".d.mts", ".d.cts")
 
@@ -370,13 +371,14 @@ def iter_source_files(root: Path):
 
 
 def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
-    """Scan a file or a folder of Python and Java code and return every finding."""
+    """Scan a file or a folder of source code and return every finding."""
     # Imported here because these modules build on this one.
+    from .go_scanner import scan_go_source
     from .java_scanner import scan_java_source
     from .js_scanner import scan_js_source
 
     scanners = {"Python": scan_source, "Java": scan_java_source,
-                "JavaScript": scan_js_source, "TypeScript": scan_js_source}
+                "JavaScript": scan_js_source, "TypeScript": scan_js_source, "Go": scan_go_source}
 
     root = Path(path)
     if not root.exists():

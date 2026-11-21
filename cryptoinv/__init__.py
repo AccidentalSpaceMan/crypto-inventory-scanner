@@ -1,5 +1,5 @@
 """crypto-inventory: find and grade the cryptography a codebase uses."""
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from .rules import load_rules
 from .scanner import scan_path

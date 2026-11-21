@@ -69,7 +69,8 @@ _HMAC_VARIANTS = {"SHA1": "HMAC_SHA1", "MD5": "HMAC_MD5"}
 
 
 class _JsScan(TextScanner):
-    js = True
+    backticks = True
+    regex_literals = True
 
     def __init__(self, rules: Rules, path: str, source: str):
         self.jsr = rules.javascript

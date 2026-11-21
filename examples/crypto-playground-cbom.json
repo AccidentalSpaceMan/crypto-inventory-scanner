@@ -2,16 +2,16 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:51b4933a-f84a-4f6f-947e-c2c8c8480c83",
+  "serialNumber": "urn:uuid:3530c307-a0d8-4787-8823-770a6b4e5020",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-21T18:49:06Z",
+    "timestamp": "2026-11-21T21:38:30Z",
     "tools": {
       "components": [
         {
           "type": "application",
           "name": "crypto-inventory-scanner",
-          "version": "0.2.0"
+          "version": "0.7.0"
         }
       ]
     },

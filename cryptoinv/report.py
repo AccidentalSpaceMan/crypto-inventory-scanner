@@ -26,6 +26,8 @@ def render(result: ScanResult, color: bool = False) -> str:
     out = [paint("bold", f"Crypto inventory: {result.root}"),
            f"{result.files_scanned} file(s) scanned{f' ({by_language})' if by_language else ''}, "
            f"{len(result.findings)} finding(s)"]
+    if result.ignored:
+        out.append(f"{result.ignored} finding(s) left out by 'cryptoinv: ignore' comments")
     if result.errors:
         out.append(f"Skipped {len(result.errors)} file(s) that couldn't be parsed:")
         out += [f"  {path}: {why}" for path, why in result.errors]

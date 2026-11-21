@@ -47,7 +47,7 @@ jobs:
       - name: Run tests
         run: python -m pytest -v
 
-      # Smoke test: the scanner runs end to end on its own code. That code references key classes
-      # (RSA, EC, Ed25519...) to recognise them in key files, so expect LEGACY findings, never BROKEN.
+      # Smoke test: the scanner runs end to end on its own code and writes both output formats.
+      # (The few lines that name key types only to recognise them carry "cryptoinv: ignore".)
       - name: Scan this project's own code
-        run: python -m cryptoinv scan cryptoinv --no-color --fail-on broken --cbom self.cbom.json
+        run: python -m cryptoinv scan cryptoinv --no-color --fail-on legacy --cbom self.cbom.json --sarif self.sarif

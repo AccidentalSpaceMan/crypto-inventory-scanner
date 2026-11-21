@@ -1,1 +1,4 @@
+# The scanner itself needs nothing beyond Python. These are for the tests:
 pytest>=8
+# Official CycloneDX library, used only to validate our CBOM output against the 1.6 schema
+cyclonedx-python-lib[json-validation]>=8

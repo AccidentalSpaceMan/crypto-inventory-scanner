@@ -6,16 +6,17 @@ A Python CLI that scans a codebase, finds every place cryptography is used, and 
 algorithm **BROKEN / LEGACY / CURRENT**. It also flags what a future quantum computer would break.
 
 Why? The first step in any post-quantum migration is an **inventory**: you can't replace RSA
-or fix MD5 until you know where it lives. This tool automates that step for Python code. Next
-it will write the result as a **CBOM** (cryptographic bill of materials), a standard
-machine-readable list of every algorithm a system uses.
+or fix MD5 until you know where it lives. This tool automates that step for Python code. It can
+also write the result as a **CBOM** (cryptographic bill of materials) in the standard
+[CycloneDX 1.6](https://cyclonedx.org/capabilities/cbom/) format, so other tools can read it.
 
 The scanner **reads** code. It never runs it, and it never connects to anything. Only scan code
 you own or have permission to scan.
 
 ## Setup
 
-No third-party packages are needed to run it, only Python 3.10+. `pytest` is just for the tests.
+No third-party packages are needed to run it, only Python 3.10+. `requirements.txt` is for the
+tests: `pytest`, plus the official CycloneDX library, used to validate the CBOM output.
 
 ```bash
 python -m venv .venv
@@ -27,6 +28,7 @@ pip install -r requirements.txt
 
 ```bash
 python -m cryptoinv scan PATH                     # a folder or a single .py file
+python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
 python -m cryptoinv scan PATH --no-color          # plain text
@@ -68,6 +70,53 @@ Summary: BROKEN 0 algorithms (0 places) | LEGACY 2 algorithms (25 places), 2 qua
 Ed25519 and X25519 are graded LEGACY because Shor's algorithm breaks them. The scanner also
 notices that each one has a post-quantum partner (ML-DSA, ML-KEM) in the same codebase, which is
 what a hybrid design looks like.
+
+## CBOM output
+
+An SBOM (software bill of materials) is an ingredients list of the libraries in a piece of
+software. A **CBOM** is the same idea for cryptography: every algorithm and protocol, and
+everywhere it's used. `--cbom out.json` writes one in
+[CycloneDX 1.6](https://cyclonedx.org/docs/1.6/json/), the OWASP standard that added
+"cryptographic-asset" components for exactly this purpose.
+
+- Each algorithm becomes one `cryptographic-asset` component with its CycloneDX `primitive`
+  (hash, ae, signature, kem, key-agree...) and cipher `mode` where known.
+- Quantum-vulnerable algorithms get `nistQuantumSecurityLevel: 0`: no security against a
+  quantum computer.
+- Every place it was found is an `evidence.occurrences` entry with file, line, the matched
+  symbol, and the line of code.
+- The grade, why, fix and post-quantum replacement aren't part of the standard, so they're
+  stored as `cryptoinv:` properties (CycloneDX's official place for tool-specific data).
+- TLS settings become `protocol` assets.
+
+Example: [`examples/crypto-playground-cbom.json`](examples/crypto-playground-cbom.json) is the
+CBOM of my playground project. One component from it:
+
+```json
+{
+  "type": "cryptographic-asset",
+  "bom-ref": "crypto:X25519",
+  "name": "X25519",
+  "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": { "primitive": "key-agree", "nistQuantumSecurityLevel": 0 }
+  },
+  "evidence": {
+    "occurrences": [
+      { "location": "cryptoplay/hybrid.py", "line": 37,
+        "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+        "additionalContext": "from cryptography.hazmat.primitives.asymmetric.x25519 import ..." }
+    ]
+  },
+  "properties": [
+    { "name": "cryptoinv:grade", "value": "LEGACY" },
+    { "name": "cryptoinv:quantumVulnerable", "value": "true" },
+    { "name": "cryptoinv:postQuantumReplacement", "value": "MLKEM" }
+  ]
+}
+```
+
+The tests validate every generated CBOM against the official CycloneDX 1.6 JSON schema.
 
 ## How grading works
 
@@ -126,11 +175,12 @@ python -m pytest
 
 The sample files in [`tests/samples/`](tests/samples) contain known weak and strong crypto. Each
 line ends with an `# expect: ...` comment naming what the scanner must find there, and the tests
-check the scanner finds exactly that: nothing missed, nothing extra. CI runs the suite on
+check the scanner finds exactly that: nothing missed, nothing extra. CBOM output is checked
+against the official CycloneDX 1.6 schema. CI runs the suite on
 Python 3.10 to 3.14 (Linux) and Windows.
 
 ## Roadmap
 
 - [x] Python scanning, grading and terminal report
-- [ ] `--cbom out.json`: CycloneDX 1.6 CBOM output
+- [x] `--cbom out.json`: CycloneDX 1.6 CBOM output, schema-validated in the tests
 - [ ] More languages (Java, Go, JavaScript) and config files (TLS settings, certificates)

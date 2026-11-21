@@ -13,7 +13,7 @@ GRADES = ("BROKEN", "LEGACY", "CURRENT")  # worst first
 DEFAULT_RULES = Path(__file__).with_name("rules.json")
 
 _ALGORITHM_FIELDS = {"name", "grade", "primitive", "quantum_vulnerable", "why", "fix",
-                     "fast_hash", "pq_partner"}
+                     "fast_hash", "pq_partner", "mode"}
 _DETECTOR_FIELDS = {"match", "algorithm", "calls_only", "secret_context", "threshold", "hash_arg"}
 _THRESHOLD_FIELDS = {"call", "keyword", "position", "min", "below", "otherwise"}
 _HASH_ARG_FIELDS = {"call", "keyword", "position", "variants"}
@@ -35,6 +35,7 @@ class Algorithm:
     fix: str
     fast_hash: bool = False   # a general-purpose hash (fine for data, wrong for passwords)
     pq_partner: str | None = None  # the post-quantum algorithm that replaces it
+    mode: str | None = None   # cipher mode for the CBOM (ecb, cbc, gcm, ...)
 
 
 @dataclass(frozen=True)

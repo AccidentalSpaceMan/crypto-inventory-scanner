@@ -49,4 +49,4 @@ jobs:
 
       # Smoke test: the scanner runs end to end on its own code (which should have no findings).
       - name: Scan this project's own code
-        run: python -m cryptoinv scan cryptoinv --no-color --fail-on broken
+        run: python -m cryptoinv scan cryptoinv --no-color --fail-on broken --cbom self.cbom.json

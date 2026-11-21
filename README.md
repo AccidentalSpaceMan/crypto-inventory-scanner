@@ -6,8 +6,8 @@ A Python CLI that scans a codebase, finds every place cryptography is used, and 
 algorithm **BROKEN / LEGACY / CURRENT**. It also flags what a future quantum computer would break.
 
 Why? The first step in any post-quantum migration is an **inventory**: you can't replace RSA
-or fix MD5 until you know where it lives. This tool automates that step for **Python and Java**
-code. It can
+or fix MD5 until you know where it lives. This tool automates that step for **Python, Java,
+JavaScript and TypeScript** code. It can
 also write the result as a **CBOM** (cryptographic bill of materials) in the standard
 [CycloneDX 1.6](https://cyclonedx.org/capabilities/cbom/) format, so other tools can read it.
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python -m cryptoinv scan PATH                     # a folder, or a single .py / .java file
+python -m cryptoinv scan PATH                     # a folder, or a single .py / .java / .js / .ts file
 python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
@@ -190,15 +190,48 @@ What it understands:
 - **Libraries:** the JDK (including ML-KEM / ML-DSA), Apache Commons `DigestUtils`, Guava
   `Hashing`, and Bouncy Castle's ML-KEM / ML-DSA / SLH-DSA parameter specs.
 
+### JavaScript and TypeScript
+
+`.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts` and `.tsx` files use the same mask-then-match
+approach as Java. The masking also understands backtick `` `template strings` `` and regex
+literals (`/"md5"/`), telling a regex apart from division (`a / 2`). Minified bundles (`.min.js`),
+type declarations (`.d.ts`) and `node_modules/` are skipped.
+
+What it understands:
+
+- **Node's `crypto` module**, however it's imported (`require('crypto')`,
+  `import * as c from 'node:crypto'`, `const { createHash: h } = require('crypto')`, or the
+  usual name `crypto`): `createHash('md5')`, `createHmac('sha1', key)` (HMAC-SHA1),
+  `createCipheriv('aes-128-ecb', ...)`, `createSign('RSA-SHA1')`, `pbkdf2Sync(pw, salt, 1000, ...)`,
+  `scryptSync`, `randomBytes`, `getDiffieHellman('modp2')` (a 1024-bit group, so BROKEN) and
+  `generateKeyPairSync('rsa', { modulusLength: 1024 })` (RSA under 2048 bits), including ML-KEM
+  and ML-DSA key types.
+- **OpenSSL cipher names:** `"aes-256-gcm"` is AES-GCM. A name with no mode gets OpenSSL's
+  default, shown in the details: `"aes256"` means AES-256-**CBC**, but `"des-ede3"` means 3DES
+  in **ECB**.
+- **WebCrypto** (browsers, Deno, Node): algorithm objects like `{ name: 'AES-GCM' }`,
+  `{ name: 'RSA-OAEP', modulusLength: 1024 }` and
+  `{ name: 'PBKDF2', hash: 'SHA-256', iterations: 600000 }`, plus string arguments such as
+  `subtle.digest('SHA-1', data)`.
+- **JSON Web Tokens** (`jsonwebtoken`): the `algorithm` / `algorithms` option of `jwt.sign` and
+  `jwt.verify`. **`'none'` is BROKEN**, because an unsigned token can be forged by anyone.
+- **Libraries:** `crypto-js` (`CryptoJS.MD5`, `CryptoJS.DES`, `CryptoJS.mode.ECB`, and imports
+  like `crypto-js/md5`), `bcrypt` / `bcryptjs` and `argon2`.
+- **Passwords and randomness:** `createHash('sha256').update(password)` is flagged as an unsalted
+  password hash. `Math.random()` is flagged when it's making a token, key, session ID or similar.
+- **TLS:** `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED = '0'`, no-op
+  `checkServerIdentity`, and old versions in `minVersion` / `maxVersion` / `secureProtocol`.
+
 ### Limitations
 
 - It's static analysis: values computed at runtime (`key_size=bits`) can't be read, so those
   findings fall back to the algorithm's normal grade.
 - The `random`-for-secrets and password-hash checks are name-based heuristics. They can miss
   cases or occasionally flag harmless code.
-- Java is matched by text patterns, not fully parsed. Links across lines (a key-pair variable
-  and its `initialize` call) work within one file, not across files.
-- Python and Java only, for now.
+- Java and JavaScript are matched by text patterns, not fully parsed. Links across lines (a
+  key-pair variable and its `initialize` call, a constant and where it's used) work within one
+  file, not across files.
+- Python, Java, JavaScript and TypeScript for now.
 
 ## Tests
 
@@ -206,8 +239,9 @@ What it understands:
 python -m pytest
 ```
 
-The sample files in [`tests/samples/`](tests/samples) (Python) and
-[`tests/samples_java/`](tests/samples_java) (Java) contain known weak and strong crypto. Each
+The sample files in [`tests/samples/`](tests/samples) (Python),
+[`tests/samples_java/`](tests/samples_java) (Java) and [`tests/samples_js/`](tests/samples_js)
+(JavaScript and TypeScript) contain known weak and strong crypto. Each
 line ends with an `expect: ...` comment naming what the scanner must find there, and the tests
 check the scanner finds exactly that: nothing missed, nothing extra. CBOM output is checked
 against the official CycloneDX 1.6 schema. CI runs the suite on
@@ -218,5 +252,6 @@ Python 3.10 to 3.14 (Linux) and Windows.
 - [x] Python scanning, grading and terminal report
 - [x] `--cbom out.json`: CycloneDX 1.6 CBOM output, schema-validated in the tests
 - [x] Java scanning (JCA, Commons Codec, Guava, Bouncy Castle PQC)
-- [ ] More languages (JavaScript/TypeScript, Go)
+- [x] JavaScript / TypeScript scanning (Node crypto, WebCrypto, JWT, crypto-js)
+- [ ] Go scanning
 - [ ] Certificates and keys (.pem / .crt: key type, size and signature hash)

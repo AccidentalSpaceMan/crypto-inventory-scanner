@@ -13,7 +13,9 @@ from cryptoinv.scanner import scan_path
 
 SAMPLES = Path(__file__).parent / "samples"
 JAVA_SAMPLES = Path(__file__).parent / "samples_java"
-ALL_SAMPLES = sorted(SAMPLES.glob("*.py")) + sorted(JAVA_SAMPLES.glob("*.java"))
+JS_SAMPLES = Path(__file__).parent / "samples_js"
+ALL_SAMPLES = (sorted(SAMPLES.glob("*.py")) + sorted(JAVA_SAMPLES.glob("*.java"))
+               + sorted(p for p in JS_SAMPLES.iterdir() if p.suffix in (".js", ".mjs", ".ts")))
 EXPECT = re.compile(r"(?:#|//)\s*expect:\s*(.+)$")
 
 

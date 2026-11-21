@@ -350,7 +350,11 @@ def scan_source(source: bytes | str, path: str, rules: Rules) -> list[Finding]:
     return visitor.findings
 
 
-LANGUAGES = {".py": "Python", ".java": "Java"}
+LANGUAGES = {".py": "Python", ".java": "Java",
+             ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".jsx": "JavaScript",
+             ".ts": "TypeScript", ".mts": "TypeScript", ".cts": "TypeScript", ".tsx": "TypeScript"}
+# Minified bundles and type declarations aren't hand-written code: skip them in folder scans.
+SKIP_SUFFIXES = (".min.js", ".d.ts", ".d.mts", ".d.cts")
 
 
 def iter_source_files(root: Path):
@@ -361,13 +365,18 @@ def iter_source_files(root: Path):
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info"))
         for name in sorted(filenames):
-            if Path(name).suffix in LANGUAGES:
+            if Path(name).suffix in LANGUAGES and not name.endswith(SKIP_SUFFIXES):
                 yield Path(dirpath) / name
 
 
 def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
     """Scan a file or a folder of Python and Java code and return every finding."""
-    from .java_scanner import scan_java_source  # imported here: it builds on this module
+    # Imported here because these modules build on this one.
+    from .java_scanner import scan_java_source
+    from .js_scanner import scan_js_source
+
+    scanners = {"Python": scan_source, "Java": scan_java_source,
+                "JavaScript": scan_js_source, "TypeScript": scan_js_source}
 
     root = Path(path)
     if not root.exists():
@@ -377,10 +386,11 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
     for file in iter_source_files(root):
         language = LANGUAGES.get(file.suffix)
         if language is None:
-            result.errors.append((file.as_posix(), "not a supported file type (.py or .java)"))
+            result.errors.append((file.as_posix(), "not a supported file type "
+                                  f"({', '.join(sorted(LANGUAGES))})"))
             continue
         display = file.as_posix() if root.is_file() else file.relative_to(root).as_posix()
-        scan = scan_source if language == "Python" else scan_java_source
+        scan = scanners[language]
         try:
             source = file.read_bytes()
             result.findings.extend(scan(source, display, rules))

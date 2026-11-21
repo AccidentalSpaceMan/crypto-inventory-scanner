@@ -1,0 +1,8 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Scan output (CBOM files you generate are yours to keep out of git, or commit on purpose)
+*.cbom.json

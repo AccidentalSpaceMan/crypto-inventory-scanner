@@ -1,3 +1,5 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Tests deliberately create old DSA / DH keys to check they're flagged.
+filterwarnings = ["ignore::cryptography.utils.CryptographyDeprecationWarning"]

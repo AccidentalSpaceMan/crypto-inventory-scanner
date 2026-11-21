@@ -61,6 +61,8 @@ class ScanResult:
     errors: list[tuple[str, str]] = field(default_factory=list)  # (file, why it was skipped)
     rules: Rules | None = None  # the rules used, so reports can look up algorithm names
     languages: dict[str, int] = field(default_factory=dict)  # files scanned per language
+    certificates: list = field(default_factory=list)  # CertificateInfo for each X.509 certificate
+    notes: list[tuple[str, str]] = field(default_factory=list)  # (file, note), e.g. encrypted keys
 
 
 # ------------------------------------------------------------------ small AST helpers
@@ -353,7 +355,9 @@ def scan_source(source: bytes | str, path: str, rules: Rules) -> list[Finding]:
 LANGUAGES = {".py": "Python", ".java": "Java",
              ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".jsx": "JavaScript",
              ".ts": "TypeScript", ".mts": "TypeScript", ".cts": "TypeScript", ".tsx": "TypeScript",
-             ".go": "Go"}
+             ".go": "Go",
+             ".pem": "Key/cert", ".crt": "Key/cert", ".cer": "Key/cert", ".der": "Key/cert",
+             ".key": "Key/cert", ".pub": "Key/cert", ".csr": "Key/cert"}
 # Minified bundles and type declarations aren't hand-written code: skip them in folder scans.
 SKIP_SUFFIXES = (".min.js", ".d.ts", ".d.mts", ".d.cts")
 
@@ -366,7 +370,7 @@ def iter_source_files(root: Path):
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info"))
         for name in sorted(filenames):
-            if Path(name).suffix in LANGUAGES and not name.endswith(SKIP_SUFFIXES):
+            if Path(name).suffix.lower() in LANGUAGES and not name.endswith(SKIP_SUFFIXES):
                 yield Path(dirpath) / name
 
 
@@ -376,6 +380,7 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
     from .go_scanner import scan_go_source
     from .java_scanner import scan_java_source
     from .js_scanner import scan_js_source
+    from .key_scanner import scan_key_file
 
     scanners = {"Python": scan_source, "Java": scan_java_source,
                 "JavaScript": scan_js_source, "TypeScript": scan_js_source, "Go": scan_go_source}
@@ -386,12 +391,27 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
     rules = rules or load_rules()
     result = ScanResult(root=str(path), rules=rules)
     for file in iter_source_files(root):
-        language = LANGUAGES.get(file.suffix)
+        language = LANGUAGES.get(file.suffix.lower())
         if language is None:
             result.errors.append((file.as_posix(), "not a supported file type "
                                   f"({', '.join(sorted(LANGUAGES))})"))
             continue
         display = file.as_posix() if root.is_file() else file.relative_to(root).as_posix()
+        if language == "Key/cert":
+            try:
+                found = scan_key_file(file.read_bytes(), display, rules)
+            except OSError as e:
+                result.errors.append((display, f"could not read: {e}"))
+                continue
+            if found.error and not found.findings:
+                result.errors.append((display, found.error))
+                continue
+            result.findings.extend(found.findings)
+            result.certificates.extend(found.certificates)
+            result.notes.extend((display, note) for note in found.notes)
+            result.files_scanned += 1
+            result.languages[language] = result.languages.get(language, 0) + 1
+            continue
         scan = scanners[language]
         try:
             source = file.read_bytes()

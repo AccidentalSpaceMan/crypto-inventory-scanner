@@ -114,6 +114,13 @@ class GoRules:
 
 
 @dataclass(frozen=True)
+class KeyRules:
+    """How to grade certificates and key files."""
+    types: dict[str, str]                 # "RSA", "EC", "ML-DSA"... -> algorithm id
+    key_size: dict[str, tuple[int, str]]
+
+
+@dataclass(frozen=True)
 class Rules:
     version: str
     algorithms: dict[str, Algorithm]
@@ -122,6 +129,7 @@ class Rules:
     java: JavaRules | None = None
     javascript: JsRules | None = None
     go: GoRules | None = None
+    keys: KeyRules | None = None
 
     def match(self, dotted: str) -> Detector | None:
         """Return the most specific detector for a dotted name, or None."""
@@ -220,9 +228,10 @@ def parse_rules(data: dict) -> Rules:
     java = _parse_java(data["java"], need) if "java" in data else None
     javascript = _parse_js(data["javascript"], need) if "javascript" in data else None
     go = _parse_go(data["go"], need) if "go" in data else None
+    keys = _parse_keys(data["keys"], need) if "keys" in data else None
     return Rules(version=str(data.get("rules_version", "unknown")), algorithms=algorithms,
                  detectors=tuple(detectors), hash_names=hash_names, java=java,
-                 javascript=javascript, go=go)
+                 javascript=javascript, go=go, keys=keys)
 
 
 def _parse_key_size(where: str, spec: dict, need) -> dict[str, tuple[int, str]]:
@@ -341,3 +350,12 @@ def _parse_go(spec: dict, need) -> GoRules:
                    key_size=_parse_key_size("go", spec.get("key_size", {}), need),
                    pbkdf2=_parse_pbkdf2("go", spec.get("pbkdf2", {}), need),
                    patterns=_parse_patterns("go", spec.get("patterns", []), need))
+
+
+def _parse_keys(spec: dict, need) -> KeyRules:
+    _check_keys("keys", spec, {"_comment", "types", "key_size"})
+    types = {}
+    for name, alg_id in spec.get("types", {}).items():
+        need(f"keys types[{name!r}]", alg_id)
+        types[name.upper()] = alg_id
+    return KeyRules(types=types, key_size=_parse_key_size("keys", spec.get("key_size", {}), need))

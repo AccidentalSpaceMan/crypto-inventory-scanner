@@ -18,8 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
                     "BROKEN / LEGACY / CURRENT. The scanner reads code; it never runs it.")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    scan = sub.add_parser("scan", help="scan a file or folder of Python, Java, JavaScript, TypeScript or Go code",
-                          description="Scan a file or folder of Python, Java, JavaScript, TypeScript or Go code. Only scan code you own or "
+    scan = sub.add_parser("scan", help="scan code (Python, Java, JavaScript, TypeScript, Go) and certificate/key files",
+                          description="Scan code (Python, Java, JavaScript, TypeScript, Go) and certificate/key files. Only scan code you own or "
                                       "have permission to scan.")
     scan.add_argument("path", help="file or folder to scan")
     scan.add_argument("--rules", metavar="FILE",

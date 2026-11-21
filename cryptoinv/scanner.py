@@ -21,7 +21,8 @@ from .rules import Algorithm, Detector, Rules, load_rules
 
 # Folders that hold other people's code or generated files, not the project itself.
 SKIP_DIRS = {".git", ".hg", ".svn", ".venv", "venv", "env", "__pycache__", "node_modules",
-             "site-packages", ".tox", ".nox", ".mypy_cache", ".pytest_cache", "build", "dist"}
+             "site-packages", ".tox", ".nox", ".mypy_cache", ".pytest_cache", "build", "dist",
+             "target", ".gradle", ".idea"}
 
 # Words in a variable or function name that suggest a value is a secret.
 SECRET_WORDS = {"key", "keys", "secret", "secrets", "token", "tokens", "password", "passwords",
@@ -59,6 +60,7 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     errors: list[tuple[str, str]] = field(default_factory=list)  # (file, why it was skipped)
     rules: Rules | None = None  # the rules used, so reports can look up algorithm names
+    languages: dict[str, int] = field(default_factory=dict)  # files scanned per language
 
 
 # ------------------------------------------------------------------ small AST helpers
@@ -348,30 +350,40 @@ def scan_source(source: bytes | str, path: str, rules: Rules) -> list[Finding]:
     return visitor.findings
 
 
-def iter_python_files(root: Path):
-    """Yield .py files under root (or root itself if it's a file), skipping SKIP_DIRS."""
+LANGUAGES = {".py": "Python", ".java": "Java"}
+
+
+def iter_source_files(root: Path):
+    """Yield supported source files under root (or root itself), skipping SKIP_DIRS."""
     if root.is_file():
         yield root
         return
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info"))
         for name in sorted(filenames):
-            if name.endswith(".py"):
+            if Path(name).suffix in LANGUAGES:
                 yield Path(dirpath) / name
 
 
 def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
-    """Scan a file or a folder of Python code and return every finding."""
+    """Scan a file or a folder of Python and Java code and return every finding."""
+    from .java_scanner import scan_java_source  # imported here: it builds on this module
+
     root = Path(path)
     if not root.exists():
         raise FileNotFoundError(f"{path} does not exist")
     rules = rules or load_rules()
     result = ScanResult(root=str(path), rules=rules)
-    for file in iter_python_files(root):
+    for file in iter_source_files(root):
+        language = LANGUAGES.get(file.suffix)
+        if language is None:
+            result.errors.append((file.as_posix(), "not a supported file type (.py or .java)"))
+            continue
         display = file.as_posix() if root.is_file() else file.relative_to(root).as_posix()
+        scan = scan_source if language == "Python" else scan_java_source
         try:
             source = file.read_bytes()
-            result.findings.extend(scan_source(source, display, rules))
+            result.findings.extend(scan(source, display, rules))
         except SyntaxError as e:
             result.errors.append((display, f"could not parse line {e.lineno}: {e.msg}"))
             continue
@@ -379,5 +391,6 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
             result.errors.append((display, f"could not read: {e}"))
             continue
         result.files_scanned += 1
+        result.languages[language] = result.languages.get(language, 0) + 1
     result.findings.sort(key=lambda f: (f.path, f.line, f.algorithm.id))
     return result

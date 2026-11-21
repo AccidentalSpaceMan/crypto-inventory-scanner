@@ -6,6 +6,7 @@ if a new attack breaks an algorithm tomorrow, you edit one line of JSON. That's 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -65,11 +66,22 @@ def _norm_hash_name(name: str) -> str:
 
 
 @dataclass(frozen=True)
+class JavaRules:
+    """How to read Java's algorithm-name strings, e.g. "AES/GCM/NoPadding" or "SHA256withRSA"."""
+    names: dict[str, str]                  # upper-case Java name -> algorithm id
+    modes: dict[str, str]                  # upper-case cipher mode -> algorithm id
+    key_size: dict[str, tuple[int, str]]   # algorithm id -> (minimum bits, id to use below it)
+    pbkdf2: dict                           # {"min", "below", "otherwise"}
+    patterns: tuple[tuple[re.Pattern, str], ...]  # library calls found by regex
+
+
+@dataclass(frozen=True)
 class Rules:
     version: str
     algorithms: dict[str, Algorithm]
     detectors: tuple[Detector, ...]  # most specific first
     hash_names: dict[str, str]       # normalised hashlib name -> algorithm id
+    java: JavaRules | None = None
 
     def match(self, dotted: str) -> Detector | None:
         """Return the most specific detector for a dotted name, or None."""
@@ -165,5 +177,41 @@ def parse_rules(data: dict) -> Rules:
     # Most specific first: "*.SUFFIX" patterns, then longer names before shorter ones,
     # so "...asymmetric.ec.ECDH" wins over "...asymmetric.ec".
     detectors.sort(key=lambda d: (not d.match.startswith("*."), -len(d.match)))
+    java = _parse_java(data["java"], need) if "java" in data else None
     return Rules(version=str(data.get("rules_version", "unknown")), algorithms=algorithms,
-                 detectors=tuple(detectors), hash_names=hash_names)
+                 detectors=tuple(detectors), hash_names=hash_names, java=java)
+
+
+def _parse_java(spec: dict, need) -> JavaRules:
+    _check_keys("java", spec, {"_comment", "names", "modes", "key_size", "pbkdf2", "patterns"})
+    names, modes = {}, {}
+    for name, alg_id in spec.get("names", {}).items():
+        need(f"java names[{name!r}]", alg_id)
+        names[name.upper()] = alg_id
+    for mode, alg_id in spec.get("modes", {}).items():
+        need(f"java modes[{mode!r}]", alg_id)
+        modes[mode.upper()] = alg_id
+    key_size = {}
+    for alg_id, rule in spec.get("key_size", {}).items():
+        need("java key_size", alg_id)
+        if "min" not in rule or "below" not in rule:
+            raise RulesError(f"java key_size[{alg_id!r}]: needs 'min' and 'below'")
+        need(f"java key_size[{alg_id!r}]", rule["below"])
+        key_size[alg_id] = (int(rule["min"]), rule["below"])
+    pbkdf2 = spec.get("pbkdf2", {})
+    if pbkdf2:
+        if not {"min", "below", "otherwise"} <= set(pbkdf2):
+            raise RulesError("java pbkdf2: needs 'min', 'below' and 'otherwise'")
+        need("java pbkdf2", pbkdf2["below"])
+        need("java pbkdf2", pbkdf2["otherwise"])
+    patterns = []
+    for i, p in enumerate(spec.get("patterns", [])):
+        where = f"java pattern #{i + 1}"
+        _check_keys(where, p, {"regex", "algorithm"})
+        need(where, p.get("algorithm"))
+        try:
+            patterns.append((re.compile(p["regex"]), p["algorithm"]))
+        except (re.error, KeyError) as e:
+            raise RulesError(f"{where}: bad or missing regex: {e}") from e
+    return JavaRules(names=names, modes=modes, key_size=key_size, pbkdf2=pbkdf2,
+                     patterns=tuple(patterns))

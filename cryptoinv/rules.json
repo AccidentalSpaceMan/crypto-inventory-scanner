@@ -349,5 +349,77 @@
     {"match": "ssl.PROTOCOL_TLS_CLIENT", "algorithm": "TLS_MODERN"},
     {"match": "ssl.TLSVersion.TLSv1_2", "algorithm": "TLS_MODERN"},
     {"match": "ssl.TLSVersion.TLSv1_3", "algorithm": "TLS_MODERN"}
-  ]
+  ],
+
+  "java": {
+    "_comment": "Java names its algorithms as strings, e.g. Cipher.getInstance(\"AES/GCM/NoPadding\"). 'names' maps those strings (case-insensitive) to the algorithm ids above.",
+    "names": {
+      "MD5": "MD5", "SHA-1": "SHA1", "SHA1": "SHA1", "SHA": "SHA1",
+      "SHA-224": "SHA224", "SHA224": "SHA224", "SHA-256": "SHA256", "SHA256": "SHA256",
+      "SHA-384": "SHA384", "SHA384": "SHA384", "SHA-512": "SHA512", "SHA512": "SHA512",
+      "SHA-512/224": "SHA512T", "SHA-512/256": "SHA512T",
+      "SHA3-224": "SHA3", "SHA3-256": "SHA3", "SHA3-384": "SHA3", "SHA3-512": "SHA3",
+
+      "AES": "AES", "AES_128": "AES", "AES_192": "AES", "AES_256": "AES",
+      "DES": "DES", "DESEDE": "TDES", "TRIPLEDES": "TDES", "3DES": "TDES",
+      "RC4": "RC4", "ARCFOUR": "RC4", "BLOWFISH": "OLD_BLOCK", "RC2": "OLD_BLOCK",
+      "CHACHA20": "CHACHA20", "CHACHA20-POLY1305": "CHACHA20_POLY1305",
+
+      "RSA": "RSA", "RSASSA-PSS": "RSA", "DSA": "DSA", "EC": "ECC", "ECDSA": "ECC", "ECDH": "ECDH",
+      "DH": "DH", "DIFFIEHELLMAN": "DH", "DHKEM": "ECDH",
+      "ED25519": "ED25519", "EDDSA": "ED25519", "ED448": "ED448",
+      "X25519": "X25519", "XDH": "X25519", "X448": "X448",
+      "ML-KEM": "MLKEM", "ML-KEM-512": "MLKEM", "ML-KEM-768": "MLKEM", "ML-KEM-1024": "MLKEM",
+      "ML-DSA": "MLDSA", "ML-DSA-44": "MLDSA", "ML-DSA-65": "MLDSA", "ML-DSA-87": "MLDSA",
+      "SLH-DSA": "SLHDSA", "SLH-DSA-SHA2-128S": "SLHDSA", "SLH-DSA-SHA2-128F": "SLHDSA",
+      "SLH-DSA-SHAKE-128S": "SLHDSA", "SLH-DSA-SHAKE-128F": "SLHDSA",
+
+      "HMACMD5": "HMAC_MD5", "HMACSHA1": "HMAC_SHA1", "HMACSHA224": "HMAC", "HMACSHA256": "HMAC",
+      "HMACSHA384": "HMAC", "HMACSHA512": "HMAC", "HMACSHA512/256": "HMAC",
+      "HMACSHA3-256": "HMAC", "HMACSHA3-384": "HMAC", "HMACSHA3-512": "HMAC",
+
+      "PBKDF2WITHHMACSHA1": "PBKDF2", "PBKDF2WITHHMACSHA256": "PBKDF2",
+      "PBKDF2WITHHMACSHA384": "PBKDF2", "PBKDF2WITHHMACSHA512": "PBKDF2",
+
+      "SHA1PRNG": "CSPRNG", "NATIVEPRNG": "CSPRNG", "NATIVEPRNGBLOCKING": "CSPRNG",
+      "NATIVEPRNGNONBLOCKING": "CSPRNG", "DRBG": "CSPRNG", "WINDOWS-PRNG": "CSPRNG",
+
+      "SSLV2": "TLS_OLD", "SSLV3": "TLS_OLD", "TLSV1": "TLS_OLD", "TLSV1.1": "TLS_OLD",
+      "TLS": "TLS_MODERN", "TLSV1.2": "TLS_MODERN", "TLSV1.3": "TLS_MODERN", "DEFAULT": "TLS_MODERN"
+    },
+    "modes": {
+      "ECB": "ECB", "CBC": "CBC", "PCBC": "CBC", "CTS": "CBC",
+      "CTR": "UNAUTH_MODE", "CFB": "UNAUTH_MODE", "OFB": "UNAUTH_MODE",
+      "GCM": "AES_GCM", "CCM": "AES_AEAD_OTHER"
+    },
+    "key_size": {
+      "RSA": {"min": 2048, "below": "RSA_WEAK"},
+      "DSA": {"min": 2048, "below": "DSA_WEAK"},
+      "DH": {"min": 2048, "below": "DH_WEAK"}
+    },
+    "pbkdf2": {"min": 600000, "below": "PBKDF2", "otherwise": "PBKDF2_STRONG"},
+    "patterns": [
+      {"regex": "\\bDigestUtils\\s*\\.\\s*(?:md5|md5Hex|getMd5Digest)\\s*\\(", "algorithm": "MD5"},
+      {"regex": "\\bDigestUtils\\s*\\.\\s*(?:sha1|sha1Hex|sha|shaHex|getSha1Digest|getShaDigest)\\s*\\(", "algorithm": "SHA1"},
+      {"regex": "\\bDigestUtils\\s*\\.\\s*(?:sha256|sha256Hex|getSha256Digest)\\s*\\(", "algorithm": "SHA256"},
+      {"regex": "\\bDigestUtils\\s*\\.\\s*(?:sha384|sha384Hex|getSha384Digest)\\s*\\(", "algorithm": "SHA384"},
+      {"regex": "\\bDigestUtils\\s*\\.\\s*(?:sha512|sha512Hex|getSha512Digest)\\s*\\(", "algorithm": "SHA512"},
+      {"regex": "\\bHashing\\s*\\.\\s*md5\\s*\\(", "algorithm": "MD5"},
+      {"regex": "\\bHashing\\s*\\.\\s*sha1\\s*\\(", "algorithm": "SHA1"},
+      {"regex": "\\bHashing\\s*\\.\\s*sha256\\s*\\(", "algorithm": "SHA256"},
+      {"regex": "\\bHashing\\s*\\.\\s*sha384\\s*\\(", "algorithm": "SHA384"},
+      {"regex": "\\bHashing\\s*\\.\\s*sha512\\s*\\(", "algorithm": "SHA512"},
+      {"regex": "\\bHashing\\s*\\.\\s*hmacMd5\\s*\\(", "algorithm": "HMAC_MD5"},
+      {"regex": "\\bHashing\\s*\\.\\s*hmacSha1\\s*\\(", "algorithm": "HMAC_SHA1"},
+      {"regex": "\\bHashing\\s*\\.\\s*hmacSha(?:256|512)\\s*\\(", "algorithm": "HMAC"},
+      {"regex": "\\bnew\\s+SecureRandom\\s*\\(", "algorithm": "CSPRNG"},
+      {"regex": "\\bSecureRandom\\s*\\.\\s*getInstanceStrong\\s*\\(", "algorithm": "CSPRNG"},
+      {"regex": "\\bNoopHostnameVerifier\\b|\\bALLOW_ALL_HOSTNAME_VERIFIER\\b|\\bTrustAllStrategy\\b", "algorithm": "TLS_NO_VERIFY"},
+      {"regex": "\\bset(?:Default)?HostnameVerifier\\s*\\(\\s*\\(\\s*\\w*\\s*,\\s*\\w*\\s*\\)\\s*->\\s*true\\b", "algorithm": "TLS_NO_VERIFY"},
+      {"regex": "\\bcheckServerTrusted\\s*\\([^)]*\\)\\s*(?:throws\\s+[\\w.,\\s]+?)?\\{\\s*\\}", "algorithm": "TLS_NO_VERIFY"},
+      {"regex": "\\bMLKEMParameterSpec\\b", "algorithm": "MLKEM"},
+      {"regex": "\\bMLDSAParameterSpec\\b", "algorithm": "MLDSA"},
+      {"regex": "\\bSLHDSAParameterSpec\\b", "algorithm": "SLHDSA"}
+    ]
+  }
 }

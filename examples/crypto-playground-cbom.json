@@ -1,0 +1,852 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:51b4933a-f84a-4f6f-947e-c2c8c8480c83",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-21T18:49:06Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "crypto-inventory-scanner",
+          "version": "0.2.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "application",
+      "name": "crypto-playground"
+    },
+    "properties": [
+      {
+        "name": "cryptoinv:rulesVersion",
+        "value": "2026.11.1"
+      },
+      {
+        "name": "cryptoinv:filesScanned",
+        "value": "15"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:ED25519",
+      "name": "Ed25519",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "nistQuantumSecurityLevel": 0
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 9,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 75,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "ed = has(Ed25519PrivateKey, Ed25519PublicKey)"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 145,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
+            "additionalContext": "return [Ed25519PrivateKey.generate()]"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 149,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
+            "additionalContext": "return [Ed25519PrivateKey.generate(), MLDSA65PrivateKey.generate()]"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 180,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "return _pick_signing(path, keys, Ed25519PrivateKey, MLDSA65PrivateKey, \"signing\")"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 186,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey",
+            "additionalContext": "return _pick_signing(path, keys, Ed25519PublicKey, MLDSA65PublicKey, \"verifying\")"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 25,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 41,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "if isinstance(private_key, (Ed25519PrivateKey, MLDSA65PrivateKey)):"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 61,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey",
+            "additionalContext": "if isinstance(public_key, (Ed25519PublicKey, MLDSA65PublicKey)):"
+          },
+          {
+            "location": "tests/test_mldsa.py",
+            "line": 2,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey"
+          },
+          {
+            "location": "tests/test_mldsa.py",
+            "line": 9,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
+            "additionalContext": "return Ed25519PrivateKey.generate()"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 5,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 42,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
+            "additionalContext": "sk = Ed25519PrivateKey.generate()"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 46,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate",
+            "additionalContext": "assert not signatures.verify(Ed25519PrivateKey.generate().public_key(), b\"message\", sig)  # wrong key"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "ED25519"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "LEGACY"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "true"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Excellent classical signature, but Shor's algorithm breaks it."
+        },
+        {
+          "name": "cryptoinv:fix",
+          "value": "Pair it with ML-DSA in a hybrid signature, then move to ML-DSA."
+        },
+        {
+          "name": "cryptoinv:postQuantumReplacement",
+          "value": "MLDSA"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:X25519",
+      "name": "X25519",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "nistQuantumSecurityLevel": 0
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/hybrid.py",
+            "line": 37,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey"
+          },
+          {
+            "location": "cryptoplay/hybrid.py",
+            "line": 75,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey.generate",
+            "additionalContext": "eph = X25519PrivateKey.generate()"
+          },
+          {
+            "location": "cryptoplay/hybrid.py",
+            "line": 107,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PublicKey.from_public_bytes",
+            "additionalContext": "x25519_secret = x_priv.exchange(X25519PublicKey.from_public_bytes(eph_x_pub))"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 12,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 73,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+            "additionalContext": "if has(X25519PrivateKey, X25519PublicKey, MLKEM768PrivateKey, MLKEM768PublicKey):"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 196,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey.generate",
+            "additionalContext": "x_sk = X25519PrivateKey.generate()"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 214,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+            "additionalContext": "return _pick_hybrid(path, keys, X25519PrivateKey, MLKEM768PrivateKey,"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 221,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PublicKey",
+            "additionalContext": "return _pick_hybrid(path, keys, X25519PublicKey, MLKEM768PublicKey,"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 4,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 10,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey.generate",
+            "additionalContext": "x, m = X25519PrivateKey.generate(), MLKEM768PrivateKey.generate()"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 73,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.x25519.X25519PrivateKey.generate",
+            "additionalContext": "hybrid.unseal((X25519PrivateKey.generate(), m), blob)  # right ML-KEM, wrong X25519"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "X25519"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "LEGACY"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "true"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Excellent classical key exchange, but Shor's algorithm breaks it; recorded traffic can be decrypted later."
+        },
+        {
+          "name": "cryptoinv:fix",
+          "value": "Pair it with ML-KEM in a hybrid (like TLS's X25519MLKEM768)."
+        },
+        {
+          "name": "cryptoinv:postQuantumReplacement",
+          "value": "MLKEM"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:AES_GCM",
+      "name": "AES-GCM",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "mode": "gcm"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 13,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+            "additionalContext": "from cryptography.hazmat.primitives.ciphers.aead import AESGCM"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 90,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "_write(path, AESGCM.generate_key(bit_length=256))"
+          },
+          {
+            "location": "cryptoplay/symmetric.py",
+            "line": 4,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+            "additionalContext": "from cryptography.hazmat.primitives.ciphers.aead import AESGCM"
+          },
+          {
+            "location": "cryptoplay/symmetric.py",
+            "line": 12,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+            "additionalContext": "return nonce + AESGCM(key).encrypt(nonce, plaintext, aad)"
+          },
+          {
+            "location": "cryptoplay/symmetric.py",
+            "line": 22,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+            "additionalContext": "return AESGCM(key).decrypt(nonce, ciphertext, aad)"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 6,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM",
+            "additionalContext": "from cryptography.hazmat.primitives.ciphers.aead import AESGCM"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 18,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "key = AESGCM.generate_key(bit_length=256)"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 23,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "key = AESGCM.generate_key(bit_length=256)"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 28,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "key = AESGCM.generate_key(bit_length=256)"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 36,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "blob = symmetric.encrypt(AESGCM.generate_key(bit_length=256), b\"secret\")"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 38,
+            "symbol": "cryptography.hazmat.primitives.ciphers.aead.AESGCM.generate_key",
+            "additionalContext": "symmetric.decrypt(AESGCM.generate_key(bit_length=256), blob)"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "AES_GCM"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Authenticated encryption: keeps data secret and detects tampering. Never reuse a nonce with the same key."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:HKDF",
+      "name": "HKDF",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kdf"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/hybrid.py",
+            "line": 38,
+            "symbol": "cryptography.hazmat.primitives.kdf.hkdf.HKDF",
+            "additionalContext": "from cryptography.hazmat.primitives.kdf.hkdf import HKDF"
+          },
+          {
+            "location": "cryptoplay/hybrid.py",
+            "line": 58,
+            "symbol": "cryptography.hazmat.primitives.kdf.hkdf.HKDF",
+            "additionalContext": "return HKDF(  [hash: SHA-384]"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "HKDF"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Turns a shared secret into one or more strong keys."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:HMAC",
+      "name": "HMAC",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/mac.py",
+            "line": 25,
+            "symbol": "cryptography.hazmat.primitives.hmac.HMAC",
+            "additionalContext": "h = hmac.HMAC(key, hashes.SHA384())  [hash: SHA-384]"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 25,
+            "symbol": "hmac.new",
+            "additionalContext": "assert mac.tag_file(key, f) == stdlib_hmac.new(key, data, hashlib.sha384).digest()  [hash: SHA-384]"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "HMAC"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Keyed fingerprint that proves a message wasn't changed. Current when built on SHA-256 or stronger."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:MLDSA",
+      "name": "ML-DSA (FIPS 204)",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 10,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.mldsa import MLDSA65PrivateKey, MLDSA65PublicKey"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 76,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "ml = has(MLDSA65PrivateKey, MLDSA65PublicKey)"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 147,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey.generate",
+            "additionalContext": "return [MLDSA65PrivateKey.generate()]"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 149,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey.generate",
+            "additionalContext": "return [Ed25519PrivateKey.generate(), MLDSA65PrivateKey.generate()]"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 180,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "return _pick_signing(path, keys, Ed25519PrivateKey, MLDSA65PrivateKey, \"signing\")"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 186,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PublicKey",
+            "additionalContext": "return _pick_signing(path, keys, Ed25519PublicKey, MLDSA65PublicKey, \"verifying\")"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 26,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.mldsa import MLDSA65PrivateKey, MLDSA65PublicKey"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 41,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "if isinstance(private_key, (Ed25519PrivateKey, MLDSA65PrivateKey)):"
+          },
+          {
+            "location": "cryptoplay/signatures.py",
+            "line": 61,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PublicKey",
+            "additionalContext": "if isinstance(public_key, (Ed25519PublicKey, MLDSA65PublicKey)):"
+          },
+          {
+            "location": "tests/test_mldsa.py",
+            "line": 3,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.mldsa import MLDSA65PrivateKey"
+          },
+          {
+            "location": "tests/test_mldsa.py",
+            "line": 13,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mldsa.MLDSA65PrivateKey.generate",
+            "additionalContext": "return MLDSA65PrivateKey.generate()"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "MLDSA"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "NIST's main post-quantum signature standard."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:MLKEM",
+      "name": "ML-KEM (FIPS 203)",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kem"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 11,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.mlkem import MLKEM768PrivateKey, MLKEM768PublicKey"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 73,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey",
+            "additionalContext": "if has(X25519PrivateKey, X25519PublicKey, MLKEM768PrivateKey, MLKEM768PublicKey):"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 197,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey.generate",
+            "additionalContext": "m_sk = MLKEM768PrivateKey.generate()"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 214,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey",
+            "additionalContext": "return _pick_hybrid(path, keys, X25519PrivateKey, MLKEM768PrivateKey,"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 221,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PublicKey",
+            "additionalContext": "return _pick_hybrid(path, keys, X25519PublicKey, MLKEM768PublicKey,"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 3,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey",
+            "additionalContext": "from cryptography.hazmat.primitives.asymmetric.mlkem import MLKEM768PrivateKey"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 10,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey.generate",
+            "additionalContext": "x, m = X25519PrivateKey.generate(), MLKEM768PrivateKey.generate()"
+          },
+          {
+            "location": "tests/test_hybrid.py",
+            "line": 75,
+            "symbol": "cryptography.hazmat.primitives.asymmetric.mlkem.MLKEM768PrivateKey.generate",
+            "additionalContext": "hybrid.unseal((x, MLKEM768PrivateKey.generate()), blob)  # right X25519, wrong ML-KEM"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "MLKEM"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "NIST's post-quantum key encapsulation standard, built on lattice math that Shor's algorithm doesn't break."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:CSPRNG",
+      "name": "OS secure random (CSPRNG)",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "drbg"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/kdf.py",
+            "line": 46,
+            "symbol": "os.urandom",
+            "additionalContext": "salt = os.urandom(SALT_SIZE)"
+          },
+          {
+            "location": "cryptoplay/keys.py",
+            "line": 112,
+            "symbol": "os.urandom",
+            "additionalContext": "_write(path, os.urandom(MAC_KEY_SIZE))"
+          },
+          {
+            "location": "cryptoplay/symmetric.py",
+            "line": 11,
+            "symbol": "os.urandom",
+            "additionalContext": "nonce = os.urandom(NONCE_SIZE)  # fresh every time; never reuse with the same key"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 22,
+            "symbol": "os.urandom",
+            "additionalContext": "data = os.urandom(300_000)  # spans several 64 KB read chunks"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 24,
+            "symbol": "os.urandom",
+            "additionalContext": "key = os.urandom(48)"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 31,
+            "symbol": "os.urandom",
+            "additionalContext": "assert len(mac.tag_file(os.urandom(48), f)) == 48"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 37,
+            "symbol": "os.urandom",
+            "additionalContext": "key = os.urandom(48)"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 44,
+            "symbol": "os.urandom",
+            "additionalContext": "key = os.urandom(48)"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 53,
+            "symbol": "os.urandom",
+            "additionalContext": "tag = mac.tag_file(os.urandom(48), f)"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 54,
+            "symbol": "os.urandom",
+            "additionalContext": "assert not mac.verify_file(os.urandom(48), f, tag)"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 62,
+            "symbol": "os.urandom",
+            "additionalContext": "key = os.urandom(48)"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "CSPRNG"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Unpredictable randomness from the operating system, suitable for keys, tokens and nonces."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:SHA384",
+      "name": "SHA-384",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/hashing.py",
+            "line": 7,
+            "symbol": "hashlib.sha384",
+            "additionalContext": "h = hashlib.sha384()"
+          },
+          {
+            "location": "tests/test_mac.py",
+            "line": 64,
+            "symbol": "hashlib.sha384",
+            "additionalContext": "forged_hash = hashlib.sha384(f.read_bytes()).digest()  # same size as a tag"
+          },
+          {
+            "location": "tests/test_roundtrip.py",
+            "line": 14,
+            "symbol": "hashlib.sha384",
+            "additionalContext": "assert hashing.sha384_file(f) == hashlib.sha384(f.read_bytes()).hexdigest()"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "SHA384"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "SHA-2 family hash with a large safety margin, including against quantum attacks."
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "bom-ref": "crypto:SCRYPT",
+      "name": "scrypt",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kdf"
+        }
+      },
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "cryptoplay/kdf.py",
+            "line": 21,
+            "symbol": "cryptography.hazmat.primitives.kdf.scrypt.Scrypt",
+            "additionalContext": "from cryptography.hazmat.primitives.kdf.scrypt import Scrypt"
+          },
+          {
+            "location": "cryptoplay/kdf.py",
+            "line": 37,
+            "symbol": "cryptography.hazmat.primitives.kdf.scrypt.Scrypt",
+            "additionalContext": "kdf = Scrypt(salt=salt, length=32, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P)"
+          }
+        ]
+      },
+      "properties": [
+        {
+          "name": "cryptoinv:id",
+          "value": "SCRYPT"
+        },
+        {
+          "name": "cryptoinv:grade",
+          "value": "CURRENT"
+        },
+        {
+          "name": "cryptoinv:quantumVulnerable",
+          "value": "false"
+        },
+        {
+          "name": "cryptoinv:why",
+          "value": "Slow, memory-hungry password hashing that resists GPU cracking."
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "application",
+      "dependsOn": [
+        "crypto:ED25519",
+        "crypto:X25519",
+        "crypto:AES_GCM",
+        "crypto:HKDF",
+        "crypto:HMAC",
+        "crypto:MLDSA",
+        "crypto:MLKEM",
+        "crypto:CSPRNG",
+        "crypto:SHA384",
+        "crypto:SCRYPT"
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 
+from .cbom import write_cbom
 from .report import render
 from .rules import GRADES, RulesError, load_rules
 from .scanner import scan_path
@@ -25,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
                       help="use a different grading rules file (default: the built-in rules.json)")
     scan.add_argument("--fail-on", choices=["broken", "legacy"],
                       help="exit with code 1 if anything this bad or worse is found (useful in CI)")
+    scan.add_argument("--cbom", metavar="FILE",
+                      help="also write a CycloneDX 1.6 CBOM (cryptographic bill of materials) "
+                           "as JSON to FILE")
     scan.add_argument("--no-color", action="store_true", help="plain text output")
     return parser
 
@@ -66,6 +70,14 @@ def main(argv: list[str] | None = None) -> int:
     if color:
         _enable_windows_colors()
     print(render(result, color=color))
+
+    if args.cbom:
+        try:
+            cbom = write_cbom(result, args.cbom)
+        except OSError as e:
+            parser.error(f"can't write CBOM to {args.cbom}: {e.strerror or e}")
+        print(f"\nWrote CBOM ({len(cbom['components'])} cryptographic assets, "
+              f"CycloneDX {cbom['specVersion']}) to {args.cbom}")
 
     if args.fail_on:
         limit = GRADES.index(args.fail_on.upper())

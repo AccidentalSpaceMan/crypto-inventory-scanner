@@ -8,3 +8,5 @@ pytest>=8
 cyclonedx-python-lib[json-validation]>=8
 # Lets cryptography create password-protected OpenSSH keys for the key-file tests
 bcrypt>=4
+# Validates SARIF output against the official schema in tests/schemas/
+jsonschema>=4

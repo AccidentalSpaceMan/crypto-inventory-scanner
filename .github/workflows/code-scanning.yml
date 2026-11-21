@@ -1,0 +1,52 @@
+# GitHub code scanning with this project's own scanner.
+#
+# Runs the crypto inventory on the repository, writes the findings as SARIF, and uploads them.
+# GitHub then shows BROKEN findings as errors and LEGACY ones as warnings in the Security tab
+# (Security > Code scanning), and on the changed lines of pull requests.
+#
+# To scan another repository you own, copy this file there and replace the Install and Scan
+# steps with these, which fetch the scanner next to your code:
+#
+#   - uses: actions/checkout@v4
+#     with: { repository: AccidentalSpaceMan/crypto-inventory-scanner, path: .crypto-scanner }
+#   - run: pip install cryptography
+#   - run: PYTHONPATH=.crypto-scanner python -m cryptoinv scan . --exclude .crypto-scanner --sarif crypto-inventory.sarif
+
+name: Crypto inventory
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # lets you start a scan by hand from the Actions tab
+
+permissions:
+  contents: read          # read the code
+  security-events: write  # upload results to code scanning
+
+jobs:
+  scan:
+    name: Scan and upload SARIF
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: pip install cryptography # optional: lets the scanner read certificate and key files
+
+      # tests/ is excluded on purpose: its sample files are full of weak crypto so the tests can
+      # check it gets caught, and those aren't real problems to report.
+      - name: Scan
+        run: python -m cryptoinv scan . --exclude tests --no-color --sarif crypto-inventory.sarif
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: crypto-inventory.sarif
+          category: crypto-inventory

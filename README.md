@@ -19,7 +19,8 @@ passwords and never prints key material. Only scan code you own or have permissi
 Scanning code needs nothing beyond Python 3.10+. Reading certificate and key files needs the
 [`cryptography`](https://cryptography.io) library. Without it, those files are listed as skipped,
 with an install hint. `requirements.txt` installs it along with the test tools: `pytest`, the
-official CycloneDX library (to validate CBOM output) and `bcrypt` (used by one key test).
+official CycloneDX library (to validate CBOM output), `jsonschema` (to validate SARIF output) and
+`bcrypt` (used by one key test).
 
 ```bash
 python -m venv .venv
@@ -32,6 +33,8 @@ pip install -r requirements.txt
 ```bash
 python -m cryptoinv scan PATH                     # a folder, or a single source / certificate / key file
 python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
+python -m cryptoinv scan PATH --sarif out.sarif   # also write SARIF 2.1.0 (GitHub code scanning)
+python -m cryptoinv scan PATH --exclude tests     # skip a folder or pattern (repeatable)
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
 python -m cryptoinv scan PATH --no-color          # plain text
@@ -73,6 +76,37 @@ Summary: BROKEN 0 algorithms (0 places) | LEGACY 2 algorithms (25 places), 2 qua
 Ed25519 and X25519 are graded LEGACY because Shor's algorithm breaks them. The scanner also
 notices that each one has a post-quantum partner (ML-DSA, ML-KEM) in the same codebase, which is
 what a hybrid design looks like.
+
+## GitHub code scanning (SARIF)
+
+An inventory is a snapshot. To catch weak crypto *as it's written*, `--sarif out.sarif` writes the
+findings in SARIF 2.1.0, the OASIS standard format for static-analysis results that GitHub,
+GitLab, Azure DevOps and many editors understand.
+
+This repository scans itself on every push and pull request with
+[`.github/workflows/code-scanning.yml`](.github/workflows/code-scanning.yml), which uploads the
+SARIF file to GitHub code scanning:
+
+- **BROKEN** findings become **errors** and **LEGACY** ones **warnings**, in the repository's
+  *Security > Code scanning* tab and as annotations on the changed lines of a pull request.
+- Each algorithm is a SARIF *rule* whose help text is the why/fix advice. Each rule also gets a
+  `security-severity` score (BROKEN 8.0 is High, LEGACY 5.0 is Medium), which GitHub uses for
+  its severity labels. Quantum-vulnerable rules are tagged `quantum-vulnerable`.
+- CURRENT findings are left out by default, since they're fine. Use
+  `--sarif-min-grade current` to include them as notes, or `broken` for errors only.
+
+The workflow file explains how to copy it into another repository you own.
+
+### Excluding files and reviewed lines
+
+- `--exclude PATTERN` skips matching files or folders, relative to the scanned path:
+  `--exclude tests`, `--exclude "vendor_*"`, `--exclude "*.min.js"`. It can be repeated. This
+  repository's workflow excludes `tests/`, whose sample files contain weak crypto on purpose.
+- A line containing **`cryptoinv: ignore`** (in a `#` or `//` comment) is left out of the report,
+  the CBOM and the SARIF file. Use it for lines a person has reviewed, ideally with a reason:
+  `hashlib.md5(data)  # cryptoinv: ignore (cache key, not security)`. The report always says how
+  many findings were left out this way, so nothing disappears silently. The scanner uses it on
+  its own key-type checks, which name RSA or Ed25519 only to recognise them.
 
 ## CBOM output
 
@@ -299,7 +333,8 @@ check the scanner finds exactly that: nothing missed, nothing extra. Certificate
 (Modern `cryptography` refuses to *create* SHA-1-signed certificates, so
 [`tests/conftest.py`](tests/conftest.py) builds a SHA-256 one, swaps the algorithm label and signs
 it again with SHA-1, giving a genuine old-style certificate to test against.) CBOM output is checked
-against the official CycloneDX 1.6 schema. CI runs the suite on
+against the official CycloneDX 1.6 schema, and SARIF output against the official OASIS SARIF
+2.1.0 schema (kept in [`tests/schemas/`](tests/schemas)). CI runs the suite on
 Python 3.10 to 3.14 (Linux) and Windows.
 
 ## Roadmap
@@ -310,3 +345,5 @@ Python 3.10 to 3.14 (Linux) and Windows.
 - [x] JavaScript / TypeScript scanning (Node crypto, WebCrypto, JWT, crypto-js)
 - [x] Go scanning (standard library, golang.org/x/crypto, CIRCL post-quantum)
 - [x] Certificates and keys (key type and size, signature hash, expiry, committed private keys)
+- [x] SARIF output and GitHub code scanning, `--exclude`, `cryptoinv: ignore` comments
+- [ ] Installable package (`pip install`, a `cryptoinv` command) and tagged releases

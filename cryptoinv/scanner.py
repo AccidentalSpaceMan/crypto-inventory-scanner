@@ -12,6 +12,7 @@ so it can also read details like an RSA key size or a PBKDF2 iteration count.
 from __future__ import annotations
 
 import ast
+import fnmatch
 import os
 import re
 from dataclasses import dataclass, field
@@ -63,6 +64,7 @@ class ScanResult:
     languages: dict[str, int] = field(default_factory=dict)  # files scanned per language
     certificates: list = field(default_factory=list)  # CertificateInfo for each X.509 certificate
     notes: list[tuple[str, str]] = field(default_factory=list)  # (file, note), e.g. encrypted keys
+    ignored: int = 0  # findings left out because their line says "cryptoinv: ignore"
 
 
 # ------------------------------------------------------------------ small AST helpers
@@ -362,19 +364,40 @@ LANGUAGES = {".py": "Python", ".java": "Java",
 SKIP_SUFFIXES = (".min.js", ".d.ts", ".d.mts", ".d.cts")
 
 
-def iter_source_files(root: Path):
-    """Yield supported source files under root (or root itself), skipping SKIP_DIRS."""
+# A reviewed line can opt out: "x = hashlib.md5(data)  # cryptoinv: ignore (cache key, not security)"
+IGNORE_MARKER = re.compile(r"cryptoinv:\s*ignore", re.IGNORECASE)
+
+
+def _excluded(rel_path: str, patterns: list[str]) -> bool:
+    """Does a path (relative to the scan root, with /) match an --exclude pattern?
+
+    A pattern matches the path itself or any folder above it, so "tests" skips everything in
+    tests/, and "*.min.js" skips minified files anywhere.
+    """
+    parts = rel_path.split("/")
+    candidates = ["/".join(parts[:i]) for i in range(1, len(parts) + 1)] + [parts[-1]]
+    return any(fnmatch.fnmatchcase(c, p.strip("/")) for p in patterns for c in candidates)
+
+
+def iter_source_files(root: Path, exclude: list[str] | None = None):
+    """Yield supported files under root (or root itself), skipping SKIP_DIRS and --exclude."""
     if root.is_file():
         yield root
         return
+    exclude = exclude or []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info"))
+        rel_dir = Path(dirpath).relative_to(root).as_posix()
+        prefix = "" if rel_dir == "." else rel_dir + "/"
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info")
+                             and not _excluded(prefix + d, exclude))
         for name in sorted(filenames):
-            if Path(name).suffix.lower() in LANGUAGES and not name.endswith(SKIP_SUFFIXES):
+            if (Path(name).suffix.lower() in LANGUAGES and not name.endswith(SKIP_SUFFIXES)
+                    and not _excluded(prefix + name, exclude)):
                 yield Path(dirpath) / name
 
 
-def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
+def scan_path(path: str | Path, rules: Rules | None = None,
+              exclude: list[str] | None = None) -> ScanResult:
     """Scan a file or a folder of source code and return every finding."""
     # Imported here because these modules build on this one.
     from .go_scanner import scan_go_source
@@ -390,7 +413,7 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
         raise FileNotFoundError(f"{path} does not exist")
     rules = rules or load_rules()
     result = ScanResult(root=str(path), rules=rules)
-    for file in iter_source_files(root):
+    for file in iter_source_files(root, exclude):
         language = LANGUAGES.get(file.suffix.lower())
         if language is None:
             result.errors.append((file.as_posix(), "not a supported file type "
@@ -424,5 +447,7 @@ def scan_path(path: str | Path, rules: Rules | None = None) -> ScanResult:
             continue
         result.files_scanned += 1
         result.languages[language] = result.languages.get(language, 0) + 1
-    result.findings.sort(key=lambda f: (f.path, f.line, f.algorithm.id))
+    kept = [f for f in result.findings if not IGNORE_MARKER.search(f.code)]
+    result.ignored = len(result.findings) - len(kept)
+    result.findings = sorted(kept, key=lambda f: (f.path, f.line, f.algorithm.id))
     return result

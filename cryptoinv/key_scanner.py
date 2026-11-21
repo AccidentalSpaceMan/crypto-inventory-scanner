@@ -73,8 +73,11 @@ class _KeyScan:
     @staticmethod
     def key_type(public_key) -> tuple[str | None, int | None, str]:
         """(type name, size in bits or None, extra detail) for a public key object."""
-        from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
-        if isinstance(public_key, rsa.RSAPublicKey):
+        # The lines marked "cryptoinv: ignore" name these key types only to *recognise* them in
+        # files being scanned. This code never creates or uses such keys.
+        from cryptography.hazmat.primitives.asymmetric import (  # cryptoinv: ignore
+            ec, ed448, ed25519, rsa, x448, x25519)
+        if isinstance(public_key, rsa.RSAPublicKey):  # cryptoinv: ignore
             return "RSA", public_key.key_size, ""
         # DSA and finite-field DH are deprecated in cryptography and may disappear from it one day.
         for module_name, class_name, type_name in (("dsa", "DSAPublicKey", "DSA"), ("dh", "DHPublicKey", "DH")):
@@ -85,10 +88,12 @@ class _KeyScan:
                 continue
             if isinstance(public_key, getattr(module, class_name)):
                 return type_name, public_key.key_size, ""
-        if isinstance(public_key, ec.EllipticCurvePublicKey):
+        if isinstance(public_key, ec.EllipticCurvePublicKey):  # cryptoinv: ignore
             return "EC", None, f"curve {public_key.curve.name}"
-        for cls, name in ((ed25519.Ed25519PublicKey, "ED25519"), (ed448.Ed448PublicKey, "ED448"),
-                          (x25519.X25519PublicKey, "X25519"), (x448.X448PublicKey, "X448")):
+        for cls, name in ((ed25519.Ed25519PublicKey, "ED25519"),  # cryptoinv: ignore
+                          (ed448.Ed448PublicKey, "ED448"),  # cryptoinv: ignore
+                          (x25519.X25519PublicKey, "X25519"),  # cryptoinv: ignore
+                          (x448.X448PublicKey, "X448")):  # cryptoinv: ignore
             if isinstance(public_key, cls):
                 return name, None, ""
         # Post-quantum key classes are newer; recognise them by name so older library versions work.

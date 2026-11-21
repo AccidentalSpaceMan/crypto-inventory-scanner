@@ -93,6 +93,27 @@ class JsRules:
 
 
 @dataclass(frozen=True)
+class GoRules:
+    """How to read Go code, where crypto is organised by import path."""
+    packages: dict[str, tuple[str, ...]]  # import path -> ids (also covers sub-packages)
+    symbols: dict[str, tuple[str, ...]]   # "path.Name" -> ids, overriding the package
+    calls: dict[str, dict]                # "path.Func" -> argument positions holding details
+    secret_context: frozenset[str]        # packages only reported in secret-looking code
+    tls_suite_parts: dict[str, str]       # word in a TLS cipher-suite name -> id
+    key_size: dict[str, tuple[int, str]]
+    pbkdf2: dict
+    patterns: tuple[tuple[re.Pattern, str], ...]
+
+    def package_ids(self, path: str) -> tuple[str, ...]:
+        """Ids for an import path, falling back to its parent paths (circl/kem/mlkem/mlkem768)."""
+        while path:
+            if path in self.packages:
+                return self.packages[path]
+            path = path.rpartition("/")[0]
+        return ()
+
+
+@dataclass(frozen=True)
 class Rules:
     version: str
     algorithms: dict[str, Algorithm]
@@ -100,6 +121,7 @@ class Rules:
     hash_names: dict[str, str]       # normalised hashlib name -> algorithm id
     java: JavaRules | None = None
     javascript: JsRules | None = None
+    go: GoRules | None = None
 
     def match(self, dotted: str) -> Detector | None:
         """Return the most specific detector for a dotted name, or None."""
@@ -197,9 +219,10 @@ def parse_rules(data: dict) -> Rules:
     detectors.sort(key=lambda d: (not d.match.startswith("*."), -len(d.match)))
     java = _parse_java(data["java"], need) if "java" in data else None
     javascript = _parse_js(data["javascript"], need) if "javascript" in data else None
+    go = _parse_go(data["go"], need) if "go" in data else None
     return Rules(version=str(data.get("rules_version", "unknown")), algorithms=algorithms,
                  detectors=tuple(detectors), hash_names=hash_names, java=java,
-                 javascript=javascript)
+                 javascript=javascript, go=go)
 
 
 def _parse_key_size(where: str, spec: dict, need) -> dict[str, tuple[int, str]]:
@@ -276,3 +299,45 @@ def _parse_js(spec: dict, need) -> JsRules:
                    key_size=_parse_key_size("javascript", spec.get("key_size", {}), need),
                    pbkdf2=_parse_pbkdf2("javascript", spec.get("pbkdf2", {}), need),
                    patterns=_parse_patterns("javascript", spec.get("patterns", []), need))
+
+
+_GO_CALL_FIELDS = {"algorithm", "hash_arg", "variants", "iterations_arg", "key_size_arg"}
+
+
+def _id_table(where: str, table: dict, need) -> dict[str, tuple[str, ...]]:
+    parsed = {}
+    for name, value in table.items():
+        ids = (value,) if isinstance(value, str) else tuple(value)
+        for alg_id in ids:
+            need(f"{where}[{name!r}]", alg_id)
+        parsed[name] = ids
+    return parsed
+
+
+def _parse_go(spec: dict, need) -> GoRules:
+    _check_keys("go", spec, {"_comment", "_secret_context_comment", "_tls_suite_parts_comment",
+                             "packages", "symbols", "calls", "secret_context", "tls_suite_parts",
+                             "key_size", "pbkdf2", "patterns"})
+    packages = _id_table("go packages", spec.get("packages", {}), need)
+    calls = {}
+    for name, call in spec.get("calls", {}).items():
+        where = f"go calls[{name!r}]"
+        _check_keys(where, call, _GO_CALL_FIELDS)
+        need(where, call.get("algorithm"))
+        for hash_id, variant in call.get("variants", {}).items():
+            need(f"{where} variants", hash_id)
+            need(f"{where} variants", variant)
+        calls[name] = call
+    secret = frozenset(spec.get("secret_context", []))
+    for path in secret:
+        if path not in packages:
+            raise RulesError(f"go secret_context: {path!r} is not in go packages")
+    suite_parts = {}
+    for part, alg_id in spec.get("tls_suite_parts", {}).items():
+        need(f"go tls_suite_parts[{part!r}]", alg_id)
+        suite_parts[part.upper()] = alg_id
+    return GoRules(packages=packages, symbols=_id_table("go symbols", spec.get("symbols", {}), need),
+                   calls=calls, secret_context=secret, tls_suite_parts=suite_parts,
+                   key_size=_parse_key_size("go", spec.get("key_size", {}), need),
+                   pbkdf2=_parse_pbkdf2("go", spec.get("pbkdf2", {}), need),
+                   patterns=_parse_patterns("go", spec.get("patterns", []), need))

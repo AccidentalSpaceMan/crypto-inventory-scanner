@@ -21,8 +21,8 @@ IDENT = r"[A-Za-z_$][\w$]*"
 STRING = r"(?:\"[^\"\n]*\"|'[^'\n]*'|`[^`]*`)"
 INT_OR_NAME = rf"(\d[\d_]*|{IDENT})"
 _TYPE = r"(?:\s*:\s*[\w$<>\[\]|.]+)?"   # optional TypeScript annotation: const ALG: string = ...
-STRING_CONST = re.compile(rf"(?<![\w$.])({IDENT}){_TYPE}\s*=\s*({STRING})\s*(?=[;,)\n])")
-INT_CONST = re.compile(rf"(?<![\w$.])({IDENT}){_TYPE}\s*=\s*(\d[\d_]*)\s*(?=[;,)\n])")
+STRING_CONST = re.compile(rf"(?<![\w$.])({IDENT}){_TYPE}\s*:?=\s*({STRING})\s*(?=[;,)\n])")
+INT_CONST = re.compile(rf"(?<![\w$.])({IDENT}){_TYPE}\s*:?=\s*(\d[\d_]*)\s*(?=[;,)\n])")
 
 # After one of these, a "/" in JavaScript starts a regex literal rather than meaning "divide".
 _REGEX_AFTER_CHARS = set("(,=:[!&|?{};+-*%<>~^")
@@ -30,12 +30,17 @@ _REGEX_AFTER_WORDS = {"return", "typeof", "case", "do", "else", "in", "of", "new
                       "void", "throw", "yield", "await"}
 
 
-def mask(source: str, js: bool = False) -> tuple[str, str]:
+def mask(source: str, js: bool = False, *, backticks: bool | None = None,
+         regex_literals: bool | None = None) -> tuple[str, str]:
     """Return (source without comments, source without comments or string contents).
 
-    Both keep exactly the same length and line breaks as the original. With js=True, backtick
-    template strings and regex literals (/.../) are treated as strings too.
+    Both keep exactly the same length and line breaks as the original. js=True turns on what
+    JavaScript needs: backtick `strings` and /regex literals/. Go needs backticks only (its raw
+    strings); Java needs neither but has triple-quoted text blocks.
     """
+    backticks = js if backticks is None else backticks
+    regex_literals = js if regex_literals is None else regex_literals
+    text_blocks = not (backticks or regex_literals)
     no_comments, masked = list(source), list(source)
     n, i = len(source), 0
     last_char, last_word = "", ""   # what came before, to tell a regex "/" from division
@@ -57,19 +62,19 @@ def mask(source: str, js: bool = False) -> tuple[str, str]:
             end = n if end < 0 else end + 2
             blank(no_comments, i, end), blank(masked, i, end)
             i = end
-        elif not js and source.startswith('"""', i):            # Java text block
+        elif text_blocks and source.startswith('"""', i):     # Java text block
             end = source.find('"""', i + 3)
             end = n if end < 0 else end
             blank(masked, i + 3, end)
             i, last_char = end + 3, '"'
-        elif c in "\"'" or (js and c == "`"):                   # string (or Java char literal)
+        elif c in "\"'" or (backticks and c == "`"):           # string (or char/rune literal)
             j = i + 1
             while j < n and source[j] != c and (c == "`" or source[j] != "\n"):
                 j += 2 if source[j] == "\\" else 1
             j = min(j, n)
             blank(masked, i + 1, j)
             i, last_char = j + 1, c
-        elif js and c == "/" and (last_char == "" or last_char in _REGEX_AFTER_CHARS
+        elif regex_literals and c == "/" and (last_char == "" or last_char in _REGEX_AFTER_CHARS
                                   or (last_word in _REGEX_AFTER_WORDS and last_char == last_word[-1:])):
             j, in_class = i + 1, False                          # regex literal /.../flags
             while j < n and source[j] != "\n":
@@ -157,11 +162,13 @@ def enclosing_braces(text: str, offset: int) -> tuple[int, int] | None:
 
 class TextScanner:
     """Base class: masking, line numbers, constants, reporting and secret-context checks."""
-    js = False
+    backticks = False       # `...` is a string (JavaScript templates, Go raw strings)
+    regex_literals = False  # /.../ is a regex literal (JavaScript)
 
     def __init__(self, rules: Rules, path: str, source: str):
         self.rules, self.path = rules, path
-        self.text, self.masked = mask(source, js=self.js)
+        self.text, self.masked = mask(source, backticks=self.backticks,
+                                      regex_literals=self.regex_literals)
         self.lines = source.splitlines()
         self.line_starts = [0] + [m.end() for m in re.finditer("\n", source)]
         self.findings: list[Finding] = []

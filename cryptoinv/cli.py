@@ -14,12 +14,12 @@ from .scanner import scan_path
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cryptoinv",
-        description="Inventory the cryptography a Python, Java, JavaScript or TypeScript codebase uses and grade each algorithm "
+        description="Inventory the cryptography a Python, Java, JavaScript, TypeScript or Go codebase uses and grade each algorithm "
                     "BROKEN / LEGACY / CURRENT. The scanner reads code; it never runs it.")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    scan = sub.add_parser("scan", help="scan a file or folder of Python, Java, JavaScript or TypeScript code",
-                          description="Scan a file or folder of Python, Java, JavaScript or TypeScript code. Only scan code you own or "
+    scan = sub.add_parser("scan", help="scan a file or folder of Python, Java, JavaScript, TypeScript or Go code",
+                          description="Scan a file or folder of Python, Java, JavaScript, TypeScript or Go code. Only scan code you own or "
                                       "have permission to scan.")
     scan.add_argument("path", help="file or folder to scan")
     scan.add_argument("--rules", metavar="FILE",

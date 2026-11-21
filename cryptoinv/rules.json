@@ -170,7 +170,11 @@
       "fix": "Leave verification on (the default). For a private CA, point verify= / cafile= at its certificate instead."},
     "TLS_MODERN": {"name": "TLS 1.2+ / secure default context", "grade": "CURRENT", "primitive": "protocol", "quantum_vulnerable": false,
       "why": "Modern TLS settings. Note: the key exchange is only quantum-safe if a hybrid group such as X25519MLKEM768 is negotiated (OpenSSL 3.5+).",
-      "fix": ""}
+      "fix": ""},
+
+    "JWT_NONE": {"name": "JWT with algorithm 'none' (unsigned)", "grade": "BROKEN", "primitive": "signature", "quantum_vulnerable": false,
+      "why": "A JSON Web Token with alg 'none' carries no signature, so anyone can write their own token and the server will accept it.",
+      "fix": "Sign tokens (e.g. ES256, EdDSA or HS256 with a strong secret) and pass an explicit algorithms list when verifying."}
   },
 
   "hash_names": {
@@ -420,6 +424,94 @@
       {"regex": "\\bMLKEMParameterSpec\\b", "algorithm": "MLKEM"},
       {"regex": "\\bMLDSAParameterSpec\\b", "algorithm": "MLDSA"},
       {"regex": "\\bSLHDSAParameterSpec\\b", "algorithm": "SLHDSA"}
+    ]
+  },
+
+  "javascript": {
+    "_comment": "Name tables are case-insensitive. A value can be one id or a list of ids (e.g. 'RSA-SHA1' is RSA plus SHA-1).",
+    "node_names": {
+      "md5": "MD5", "sha1": "SHA1", "sha-1": "SHA1", "sha224": "SHA224", "sha256": "SHA256", "sha-256": "SHA256",
+      "sha384": "SHA384", "sha-384": "SHA384", "sha512": "SHA512", "sha-512": "SHA512",
+      "sha512-224": "SHA512T", "sha512-256": "SHA512T",
+      "sha3-224": "SHA3", "sha3-256": "SHA3", "sha3-384": "SHA3", "sha3-512": "SHA3", "shake128": "SHA3", "shake256": "SHA3",
+      "blake2b512": "BLAKE2", "blake2s256": "BLAKE2",
+      "rsa-md5": ["RSA", "MD5"], "rsa-sha1": ["RSA", "SHA1"], "rsa-sha224": ["RSA", "SHA224"],
+      "rsa-sha256": ["RSA", "SHA256"], "rsa-sha384": ["RSA", "SHA384"], "rsa-sha512": ["RSA", "SHA512"],
+      "rsa": "RSA", "rsa-pss": "RSA", "dsa": "DSA", "ec": "ECC", "dh": "DH",
+      "ed25519": "ED25519", "ed448": "ED448", "x25519": "X25519", "x448": "X448",
+      "ml-kem-512": "MLKEM", "ml-kem-768": "MLKEM", "ml-kem-1024": "MLKEM",
+      "ml-dsa-44": "MLDSA", "ml-dsa-65": "MLDSA", "ml-dsa-87": "MLDSA",
+      "slh-dsa-sha2-128s": "SLHDSA", "slh-dsa-sha2-128f": "SLHDSA", "slh-dsa-shake-128s": "SLHDSA", "slh-dsa-shake-128f": "SLHDSA",
+      "aes": "AES", "hmac": "HMAC"
+    },
+    "ciphers": {
+      "aes": "AES", "des": "DES", "des-ede3": "TDES", "des-ede": "TDES", "des3": "TDES",
+      "bf": "OLD_BLOCK", "blowfish": "OLD_BLOCK", "rc2": "OLD_BLOCK", "cast5": "OLD_BLOCK", "idea": "OLD_BLOCK",
+      "rc4": "RC4", "chacha20": "CHACHA20", "chacha20-poly1305": "CHACHA20_POLY1305"
+    },
+    "cipher_modes": {
+      "ecb": "ECB", "cbc": "CBC", "ctr": "UNAUTH_MODE", "cfb": "UNAUTH_MODE", "cfb1": "UNAUTH_MODE",
+      "cfb8": "UNAUTH_MODE", "ofb": "UNAUTH_MODE", "gcm": "AES_GCM", "ccm": "AES_AEAD_OTHER", "ocb": "AES_AEAD_OTHER"
+    },
+    "_cipher_default_modes_comment": "OpenSSL's mode when a cipher name has none: 'aes256' is AES-256-CBC, but 'des-ede3' is 3DES in ECB.",
+    "cipher_default_modes": {"des-ede3": "ecb", "des-ede": "ecb", "*": "cbc"},
+    "webcrypto": {
+      "SHA-1": "SHA1", "SHA-256": "SHA256", "SHA-384": "SHA384", "SHA-512": "SHA512",
+      "AES-CBC": ["AES", "CBC"], "AES-CTR": ["AES", "UNAUTH_MODE"], "AES-GCM": "AES_GCM", "AES-KW": "AES",
+      "RSA-OAEP": "RSA", "RSASSA-PKCS1-v1_5": "RSA", "RSA-PSS": "RSA",
+      "ECDSA": "ECC", "ECDH": "ECDH", "Ed25519": "ED25519", "Ed448": "ED448", "X25519": "X25519", "X448": "X448",
+      "HMAC": "HMAC", "PBKDF2": "PBKDF2", "HKDF": "HKDF",
+      "ML-KEM-512": "MLKEM", "ML-KEM-768": "MLKEM", "ML-KEM-1024": "MLKEM",
+      "ML-DSA-44": "MLDSA", "ML-DSA-65": "MLDSA", "ML-DSA-87": "MLDSA"
+    },
+    "jwt": {
+      "HS256": "HMAC", "HS384": "HMAC", "HS512": "HMAC",
+      "RS256": "RSA", "RS384": "RSA", "RS512": "RSA", "PS256": "RSA", "PS384": "RSA", "PS512": "RSA",
+      "ES256": "ECC", "ES256K": "ECC", "ES384": "ECC", "ES512": "ECC", "EdDSA": "ED25519",
+      "none": "JWT_NONE"
+    },
+    "tls": {
+      "SSLv3_method": "TLS_OLD", "TLSv1_method": "TLS_OLD", "TLSv1_1_method": "TLS_OLD",
+      "TLSv1_2_method": "TLS_MODERN", "TLS_method": "TLS_MODERN",
+      "TLSv1": "TLS_OLD", "TLSv1.1": "TLS_OLD", "TLSv1.2": "TLS_MODERN", "TLSv1.3": "TLS_MODERN"
+    },
+    "modules": {
+      "bcrypt": "BCRYPT", "bcryptjs": "BCRYPT", "argon2": "ARGON2", "@node-rs/argon2": "ARGON2",
+      "crypto-js/md5": "MD5", "crypto-js/sha1": "SHA1", "crypto-js/sha256": "SHA256", "crypto-js/sha512": "SHA512",
+      "crypto-js/sha3": "SHA3", "crypto-js/aes": "AES", "crypto-js/tripledes": "TDES", "crypto-js/rc4": "RC4",
+      "crypto-js/hmac-md5": "HMAC_MD5", "crypto-js/hmac-sha1": "HMAC_SHA1", "crypto-js/hmac-sha256": "HMAC",
+      "crypto-js/hmac-sha512": "HMAC", "crypto-js/pbkdf2": "PBKDF2", "crypto-js/mode-ecb": "ECB"
+    },
+    "dh_groups": {"modp1": 768, "modp2": 1024, "modp5": 1536, "modp14": 2048, "modp15": 3072,
+                  "modp16": 4096, "modp17": 6144, "modp18": 8192},
+    "key_size": {
+      "RSA": {"min": 2048, "below": "RSA_WEAK"},
+      "DSA": {"min": 2048, "below": "DSA_WEAK"},
+      "DH": {"min": 2048, "below": "DH_WEAK"}
+    },
+    "pbkdf2": {"min": 600000, "below": "PBKDF2", "otherwise": "PBKDF2_STRONG"},
+    "patterns": [
+      {"regex": "\\bCryptoJS\\s*\\.\\s*MD5\\s*\\(", "algorithm": "MD5"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*SHA1\\s*\\(", "algorithm": "SHA1"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*SHA256\\s*\\(", "algorithm": "SHA256"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*SHA512\\s*\\(", "algorithm": "SHA512"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*SHA3\\s*\\(", "algorithm": "SHA3"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*AES\\s*\\.", "algorithm": "AES"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*DES\\s*\\.", "algorithm": "DES"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*TripleDES\\s*\\.", "algorithm": "TDES"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*RC4(?:Drop)?\\s*\\.", "algorithm": "RC4"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*HmacMD5\\s*\\(", "algorithm": "HMAC_MD5"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*HmacSHA1\\s*\\(", "algorithm": "HMAC_SHA1"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*HmacSHA(?:256|384|512)\\s*\\(", "algorithm": "HMAC"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*mode\\s*\\.\\s*ECB\\b", "algorithm": "ECB"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*mode\\s*\\.\\s*CBC\\b", "algorithm": "CBC"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*mode\\s*\\.\\s*(?:CTR|CFB|OFB)\\b", "algorithm": "UNAUTH_MODE"},
+      {"regex": "\\bCryptoJS\\s*\\.\\s*lib\\s*\\.\\s*WordArray\\s*\\.\\s*random\\s*\\(", "algorithm": "CSPRNG"},
+      {"regex": "\\bbcrypt\\s*\\.\\s*(?:hash|hashSync|genSalt|genSaltSync|compare|compareSync)\\s*\\(", "algorithm": "BCRYPT"},
+      {"regex": "\\bargon2\\s*\\.\\s*(?:hash|verify)\\s*\\(", "algorithm": "ARGON2"},
+      {"regex": "\\bcrypto\\s*\\.\\s*(?:getRandomValues|randomUUID)\\s*\\(", "algorithm": "CSPRNG"},
+      {"regex": "\\brejectUnauthorized\\s*:\\s*false\\b", "algorithm": "TLS_NO_VERIFY"},
+      {"regex": "\\bcheckServerIdentity\\s*:\\s*\\(\\s*\\)\\s*=>\\s*(?:undefined|null|\\{\\s*\\})", "algorithm": "TLS_NO_VERIFY"}
     ]
   }
 }

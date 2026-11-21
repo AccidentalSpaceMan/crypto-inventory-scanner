@@ -76,12 +76,30 @@ class JavaRules:
 
 
 @dataclass(frozen=True)
+class JsRules:
+    """How to read JavaScript/TypeScript algorithm names. Each table maps a name to algorithm ids."""
+    node_names: dict[str, tuple[str, ...]]    # Node crypto: hashes, key types ("sha1", "rsa", ...)
+    ciphers: dict[str, tuple[str, ...]]       # OpenSSL cipher families ("aes", "des-ede3", ...)
+    cipher_modes: dict[str, tuple[str, ...]]  # "cbc", "gcm", ...
+    webcrypto: dict[str, tuple[str, ...]]     # browser WebCrypto names ("AES-GCM", ...)
+    jwt: dict[str, tuple[str, ...]]           # JSON Web Token algorithms ("HS256", "none", ...)
+    tls: dict[str, tuple[str, ...]]           # TLS versions / protocol methods
+    modules: dict[str, tuple[str, ...]]       # npm modules whose import reveals an algorithm
+    cipher_default_modes: dict[str, str]      # mode OpenSSL uses when a name has none
+    dh_groups: dict[str, int]                 # named Diffie-Hellman groups -> bits
+    key_size: dict[str, tuple[int, str]]
+    pbkdf2: dict
+    patterns: tuple[tuple[re.Pattern, str], ...]
+
+
+@dataclass(frozen=True)
 class Rules:
     version: str
     algorithms: dict[str, Algorithm]
     detectors: tuple[Detector, ...]  # most specific first
     hash_names: dict[str, str]       # normalised hashlib name -> algorithm id
     java: JavaRules | None = None
+    javascript: JsRules | None = None
 
     def match(self, dotted: str) -> Detector | None:
         """Return the most specific detector for a dotted name, or None."""
@@ -178,8 +196,43 @@ def parse_rules(data: dict) -> Rules:
     # so "...asymmetric.ec.ECDH" wins over "...asymmetric.ec".
     detectors.sort(key=lambda d: (not d.match.startswith("*."), -len(d.match)))
     java = _parse_java(data["java"], need) if "java" in data else None
+    javascript = _parse_js(data["javascript"], need) if "javascript" in data else None
     return Rules(version=str(data.get("rules_version", "unknown")), algorithms=algorithms,
-                 detectors=tuple(detectors), hash_names=hash_names, java=java)
+                 detectors=tuple(detectors), hash_names=hash_names, java=java,
+                 javascript=javascript)
+
+
+def _parse_key_size(where: str, spec: dict, need) -> dict[str, tuple[int, str]]:
+    key_size = {}
+    for alg_id, rule in spec.items():
+        need(f"{where} key_size", alg_id)
+        if "min" not in rule or "below" not in rule:
+            raise RulesError(f"{where} key_size[{alg_id!r}]: needs 'min' and 'below'")
+        need(f"{where} key_size[{alg_id!r}]", rule["below"])
+        key_size[alg_id] = (int(rule["min"]), rule["below"])
+    return key_size
+
+
+def _parse_pbkdf2(where: str, pbkdf2: dict, need) -> dict:
+    if pbkdf2:
+        if not {"min", "below", "otherwise"} <= set(pbkdf2):
+            raise RulesError(f"{where} pbkdf2: needs 'min', 'below' and 'otherwise'")
+        need(f"{where} pbkdf2", pbkdf2["below"])
+        need(f"{where} pbkdf2", pbkdf2["otherwise"])
+    return pbkdf2
+
+
+def _parse_patterns(where: str, specs: list, need) -> tuple[tuple[re.Pattern, str], ...]:
+    patterns = []
+    for i, p in enumerate(specs):
+        here = f"{where} pattern #{i + 1}"
+        _check_keys(here, p, {"regex", "algorithm"})
+        need(here, p.get("algorithm"))
+        try:
+            patterns.append((re.compile(p["regex"]), p["algorithm"]))
+        except (re.error, KeyError) as e:
+            raise RulesError(f"{here}: bad or missing regex: {e}") from e
+    return tuple(patterns)
 
 
 def _parse_java(spec: dict, need) -> JavaRules:
@@ -191,27 +244,35 @@ def _parse_java(spec: dict, need) -> JavaRules:
     for mode, alg_id in spec.get("modes", {}).items():
         need(f"java modes[{mode!r}]", alg_id)
         modes[mode.upper()] = alg_id
-    key_size = {}
-    for alg_id, rule in spec.get("key_size", {}).items():
-        need("java key_size", alg_id)
-        if "min" not in rule or "below" not in rule:
-            raise RulesError(f"java key_size[{alg_id!r}]: needs 'min' and 'below'")
-        need(f"java key_size[{alg_id!r}]", rule["below"])
-        key_size[alg_id] = (int(rule["min"]), rule["below"])
-    pbkdf2 = spec.get("pbkdf2", {})
-    if pbkdf2:
-        if not {"min", "below", "otherwise"} <= set(pbkdf2):
-            raise RulesError("java pbkdf2: needs 'min', 'below' and 'otherwise'")
-        need("java pbkdf2", pbkdf2["below"])
-        need("java pbkdf2", pbkdf2["otherwise"])
-    patterns = []
-    for i, p in enumerate(spec.get("patterns", [])):
-        where = f"java pattern #{i + 1}"
-        _check_keys(where, p, {"regex", "algorithm"})
-        need(where, p.get("algorithm"))
-        try:
-            patterns.append((re.compile(p["regex"]), p["algorithm"]))
-        except (re.error, KeyError) as e:
-            raise RulesError(f"{where}: bad or missing regex: {e}") from e
-    return JavaRules(names=names, modes=modes, key_size=key_size, pbkdf2=pbkdf2,
-                     patterns=tuple(patterns))
+    return JavaRules(names=names, modes=modes,
+                     key_size=_parse_key_size("java", spec.get("key_size", {}), need),
+                     pbkdf2=_parse_pbkdf2("java", spec.get("pbkdf2", {}), need),
+                     patterns=_parse_patterns("java", spec.get("patterns", []), need))
+
+
+_JS_TABLES = ("node_names", "ciphers", "cipher_modes", "webcrypto", "jwt", "tls", "modules")
+
+
+def _parse_js(spec: dict, need) -> JsRules:
+    _check_keys("javascript", spec, {"_comment", "_cipher_default_modes_comment", *_JS_TABLES,
+                                     "cipher_default_modes", "dh_groups", "key_size", "pbkdf2",
+                                     "patterns"})
+    tables = {}
+    for table in _JS_TABLES:
+        parsed = {}
+        for name, value in spec.get(table, {}).items():
+            ids = (value,) if isinstance(value, str) else tuple(value)
+            for alg_id in ids:
+                need(f"javascript {table}[{name!r}]", alg_id)
+            # npm module names are exact; every other table is case-insensitive
+            parsed[name if table == "modules" else name.upper()] = ids
+        tables[table] = parsed
+    default_modes = {k.lower(): v.lower() for k, v in spec.get("cipher_default_modes", {}).items()}
+    for base, mode in default_modes.items():
+        if mode.upper() not in tables["cipher_modes"]:
+            raise RulesError(f"javascript cipher_default_modes[{base!r}]: unknown mode {mode!r}")
+    return JsRules(**tables, cipher_default_modes=default_modes,
+                   dh_groups={k.lower(): int(v) for k, v in spec.get("dh_groups", {}).items()},
+                   key_size=_parse_key_size("javascript", spec.get("key_size", {}), need),
+                   pbkdf2=_parse_pbkdf2("javascript", spec.get("pbkdf2", {}), need),
+                   patterns=_parse_patterns("javascript", spec.get("patterns", []), need))

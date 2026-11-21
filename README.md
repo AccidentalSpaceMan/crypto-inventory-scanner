@@ -7,17 +7,19 @@ algorithm **BROKEN / LEGACY / CURRENT**. It also flags what a future quantum com
 
 Why? The first step in any post-quantum migration is an **inventory**: you can't replace RSA
 or fix MD5 until you know where it lives. This tool automates that step for **Python, Java,
-JavaScript, TypeScript and Go** code. It can
+JavaScript, TypeScript and Go** code, plus the **certificates and keys** stored alongside it. It can
 also write the result as a **CBOM** (cryptographic bill of materials) in the standard
 [CycloneDX 1.6](https://cyclonedx.org/capabilities/cbom/) format, so other tools can read it.
 
-The scanner **reads** code. It never runs it, and it never connects to anything. Only scan code
-you own or have permission to scan.
+The scanner **reads** files. It never runs code, never connects to anything, never asks for
+passwords and never prints key material. Only scan code you own or have permission to scan.
 
 ## Setup
 
-No third-party packages are needed to run it, only Python 3.10+. `requirements.txt` is for the
-tests: `pytest`, plus the official CycloneDX library, used to validate the CBOM output.
+Scanning code needs nothing beyond Python 3.10+. Reading certificate and key files needs the
+[`cryptography`](https://cryptography.io) library. Without it, those files are listed as skipped,
+with an install hint. `requirements.txt` installs it along with the test tools: `pytest`, the
+official CycloneDX library (to validate CBOM output) and `bcrypt` (used by one key test).
 
 ```bash
 python -m venv .venv
@@ -28,7 +30,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python -m cryptoinv scan PATH                     # a folder, or a single .py / .java / .js / .ts / .go file
+python -m cryptoinv scan PATH                     # a folder, or a single source / certificate / key file
 python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
@@ -249,6 +251,26 @@ ML-DSA / SLH-DSA, `crypto/ecdh` (X25519 vs. NIST curves), `crypto/dsa` parameter
 `tls.VersionTLS10/11` and weak cipher suites (`TLS_RSA_WITH_RC4_128_SHA` is RC4 plus static RSA
 key exchange). The `vendor/` folder of copied dependencies is skipped.
 
+### Certificates and keys
+
+The code scanners find crypto that code *uses*. This one reads crypto *material* in the repository:
+`.pem`, `.crt`, `.cer`, `.der`, `.key`, `.pub` and `.csr` files, in text (PEM) or binary (DER) form.
+
+- **X.509 certificates:** the key type and size (RSA-1024 is BROKEN; ECDSA, RSA-2048 and Ed25519
+  are LEGACY because they're quantum-vulnerable; ML-DSA is CURRENT), the signature hash (a SHA-1
+  signed certificate is BROKEN), the subject, and whether it has **expired**. A bundle with many
+  certificates reports each one at its own line, and a *Certificates* table summarises them.
+- **Private keys:** an **unencrypted private key in the repository is BROKEN** on its own,
+  whatever its algorithm. Anyone who can read the repo, or an old commit, holds the key. A
+  password-protected key is listed under *Notes* and never opened.
+- **Also:** public keys, certificate signing requests, OpenSSH public and private keys
+  (`ssh-rsa`, `ssh-ed25519`, `ssh-dss`...) and Diffie-Hellman parameter files.
+- **In the CBOM**, each certificate becomes a CycloneDX `certificate` asset with its subject,
+  issuer, validity dates and signature algorithm, linked to the algorithms it depends on.
+
+Findings show only facts *about* a key. The report's code column shows the
+`-----BEGIN CERTIFICATE-----` style marker, never the key material.
+
 ### Limitations
 
 - It's static analysis: values computed at runtime (`key_size=bits`) can't be read, so those
@@ -258,7 +280,8 @@ key exchange). The `vendor/` folder of copied dependencies is skipped.
 - Java, JavaScript and Go are matched by text patterns, not fully parsed. Links across lines (a
   key-pair variable and its `initialize` call, a constant and where it's used) work within one
   file, not across files.
-- Python, Java, JavaScript, TypeScript and Go for now.
+- Python, Java, JavaScript, TypeScript and Go for now. Password-protected keys and keystores
+  (`.p12`, `.jks`) aren't opened.
 
 ## Tests
 
@@ -271,7 +294,11 @@ The sample files in [`tests/samples/`](tests/samples) (Python),
 (JavaScript and TypeScript) and [`tests/samples_go/`](tests/samples_go) (Go) contain known weak
 and strong crypto. Each
 line ends with an `expect: ...` comment naming what the scanner must find there, and the tests
-check the scanner finds exactly that: nothing missed, nothing extra. CBOM output is checked
+check the scanner finds exactly that: nothing missed, nothing extra. Certificates and keys are
+**generated during the tests and never committed**: the repository contains no key material.
+(Modern `cryptography` refuses to *create* SHA-1-signed certificates, so
+[`tests/conftest.py`](tests/conftest.py) builds a SHA-256 one, swaps the algorithm label and signs
+it again with SHA-1, giving a genuine old-style certificate to test against.) CBOM output is checked
 against the official CycloneDX 1.6 schema. CI runs the suite on
 Python 3.10 to 3.14 (Linux) and Windows.
 
@@ -282,4 +309,4 @@ Python 3.10 to 3.14 (Linux) and Windows.
 - [x] Java scanning (JCA, Commons Codec, Guava, Bouncy Castle PQC)
 - [x] JavaScript / TypeScript scanning (Node crypto, WebCrypto, JWT, crypto-js)
 - [x] Go scanning (standard library, golang.org/x/crypto, CIRCL post-quantum)
-- [ ] Certificates and keys (.pem / .crt: key type, size and signature hash)
+- [x] Certificates and keys (key type and size, signature hash, expiry, committed private keys)

@@ -29,8 +29,11 @@ def render(result: ScanResult, color: bool = False) -> str:
     if result.errors:
         out.append(f"Skipped {len(result.errors)} file(s) that couldn't be parsed:")
         out += [f"  {path}: {why}" for path, why in result.errors]
+    notes = [f"  {path}: {note}" for path, note in result.notes]
     if not result.findings:
         out.append("\nNo cryptography found.")
+        if notes:
+            out += ["", paint("bold", "Notes"), *notes]
         return "\n".join(out)
 
     by_alg: dict[str, list[Finding]] = {}
@@ -57,9 +60,28 @@ def render(result: ScanResult, color: bool = False) -> str:
                 detail = f"  [{f.detail}]" if f.detail else ""
                 out.append(f"      {f'{f.path}:{f.line}':<{width}}  {paint('dim', code)}{detail}")
 
+    if result.certificates:
+        out += ["", *_certificate_section(result, paint)]
+    if notes:
+        out += ["", paint("bold", "Notes"), *notes]
     out += ["", *_quantum_section(algorithms, by_alg, paint, result.rules), "",
             _summary(algorithms, by_alg)]
     return "\n".join(out)
+
+
+def _certificate_section(result: ScanResult, paint) -> list[str]:
+    """One line per certificate: where, who, its key, its signature and its expiry."""
+    names = result.rules.algorithms if result.rules else {}
+    lines = [paint("bold", f"Certificates ({len(result.certificates)})")]
+    width = max(len(f"{c.path}:{c.line}") for c in result.certificates)
+    for c in sorted(result.certificates, key=lambda c: (c.path, c.line)):
+        key = names[c.key_algorithm].name if c.key_algorithm in names else "unknown key"
+        signature = names[c.signature_algorithm].name if c.signature_algorithm in names else "unknown"
+        expiry = (paint("BROKEN", f"EXPIRED {c.not_after:%Y-%m-%d}") if c.expired
+                  else f"valid until {c.not_after:%Y-%m-%d}")
+        lines.append(f"  {f'{c.path}:{c.line}':<{width}}  {c.subject}  |  key: {key}  |  "
+                     f"signature: {signature}  |  {expiry}")
+    return lines
 
 
 def _wrap(label: str, text: str) -> list[str]:

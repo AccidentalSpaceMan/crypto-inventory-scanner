@@ -174,7 +174,11 @@
 
     "JWT_NONE": {"name": "JWT with algorithm 'none' (unsigned)", "grade": "BROKEN", "primitive": "signature", "quantum_vulnerable": false,
       "why": "A JSON Web Token with alg 'none' carries no signature, so anyone can write their own token and the server will accept it.",
-      "fix": "Sign tokens (e.g. ES256, EdDSA or HS256 with a strong secret) and pass an explicit algorithms list when verifying."}
+      "fix": "Sign tokens (e.g. ES256, EdDSA or HS256 with a strong secret) and pass an explicit algorithms list when verifying."},
+
+    "PLAINTEXT_PRIVATE_KEY": {"name": "Unencrypted private key stored in the code base", "grade": "BROKEN", "primitive": "other", "quantum_vulnerable": false,
+      "why": "Anyone who can read the repository, or any copy or old commit of it, holds this key and can impersonate its owner or decrypt what it protects.",
+      "fix": "Remove the file, treat the key as leaked and replace it (it stays in git history), and keep keys in a secrets manager or vault."}
   },
 
   "hash_names": {
@@ -583,5 +587,19 @@
       {"regex": "\\bInsecureSkipVerify\\s*:\\s*true\\b", "algorithm": "TLS_NO_VERIFY"},
       {"regex": "\\bInsecureSkipVerify\\s*=\\s*true\\b", "algorithm": "TLS_NO_VERIFY"}
     ]
+  },
+
+  "keys": {
+    "_comment": "Certificates and key files (.pem, .crt, .cer, .der, .key, .pub, .csr). 'types' maps the key type the cryptography library reports to an algorithm id; signature hashes use hash_names above.",
+    "types": {
+      "RSA": "RSA", "DSA": "DSA", "EC": "ECC", "DH": "DH",
+      "ED25519": "ED25519", "ED448": "ED448", "X25519": "X25519", "X448": "X448",
+      "ML-DSA": "MLDSA", "ML-KEM": "MLKEM", "SLH-DSA": "SLHDSA"
+    },
+    "key_size": {
+      "RSA": {"min": 2048, "below": "RSA_WEAK"},
+      "DSA": {"min": 2048, "below": "DSA_WEAK"},
+      "DH": {"min": 2048, "below": "DH_WEAK"}
+    }
   }
 }

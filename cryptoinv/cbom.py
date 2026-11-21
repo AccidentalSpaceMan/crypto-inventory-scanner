@@ -90,6 +90,14 @@ def build_cbom(result: ScanResult, *, timestamp: str | None = None,
     metadata_props += [{"name": "cryptoinv:skippedFile", "value": f"{path}: {why}"}
                        for path, why in result.errors]
 
+    certificates = [_certificate_component(cert) for cert in result.certificates]
+    dependencies = [{"ref": APP_REF, "dependsOn": [c["bom-ref"] for c in components + certificates]}]
+    # Each certificate depends on its key and signature algorithms.
+    for cert, comp in zip(result.certificates, certificates):
+        refs = sorted({f"crypto:{a}" for a in (cert.key_algorithm, cert.signature_algorithm) if a})
+        if refs:
+            dependencies.append({"ref": comp["bom-ref"], "dependsOn": refs})
+
     return {
         "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
         "bomFormat": "CycloneDX",
@@ -103,9 +111,33 @@ def build_cbom(result: ScanResult, *, timestamp: str | None = None,
             "component": {"type": "application", "bom-ref": APP_REF, "name": app_name},
             "properties": metadata_props,
         },
-        "components": components,
+        "components": components + certificates,
         # "The scanned application depends on these cryptographic assets."
-        "dependencies": [{"ref": APP_REF, "dependsOn": [c["bom-ref"] for c in components]}],
+        "dependencies": dependencies,
+    }
+
+
+def _iso(moment) -> str:
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _certificate_component(cert) -> dict:
+    """A CycloneDX 'certificate' asset: who it's for, who signed it, when it's valid."""
+    props: dict = {"subjectName": cert.subject, "issuerName": cert.issuer,
+                   "notValidBefore": _iso(cert.not_before), "notValidAfter": _iso(cert.not_after),
+                   "certificateFormat": "X.509"}
+    if cert.signature_algorithm:
+        props["signatureAlgorithmRef"] = f"crypto:{cert.signature_algorithm}"
+    properties = [{"name": "cryptoinv:expired", "value": str(cert.expired).lower()}]
+    if cert.key_algorithm:
+        properties.append({"name": "cryptoinv:publicKeyAlgorithm", "value": f"crypto:{cert.key_algorithm}"})
+    return {
+        "type": "cryptographic-asset",
+        "bom-ref": f"certificate:{cert.path}:{cert.line}",
+        "name": cert.subject,
+        "cryptoProperties": {"assetType": "certificate", "certificateProperties": props},
+        "evidence": {"occurrences": [{"location": cert.path, "line": cert.line}]},
+        "properties": properties,
     }
 
 

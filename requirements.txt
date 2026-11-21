@@ -1,4 +1,10 @@
-# The scanner itself needs nothing beyond Python. These are for the tests:
+# Scanning code needs nothing beyond Python.
+# Optional: reading certificate and key files (.pem, .crt, .key, ...) uses cryptography.
+cryptography>=44
+
+# For the tests:
 pytest>=8
 # Official CycloneDX library, used only to validate our CBOM output against the 1.6 schema
 cyclonedx-python-lib[json-validation]>=8
+# Lets cryptography create password-protected OpenSSH keys for the key-file tests
+bcrypt>=4

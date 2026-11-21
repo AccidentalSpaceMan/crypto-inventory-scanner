@@ -6,7 +6,8 @@ A Python CLI that scans a codebase, finds every place cryptography is used, and 
 algorithm **BROKEN / LEGACY / CURRENT**. It also flags what a future quantum computer would break.
 
 Why? The first step in any post-quantum migration is an **inventory**: you can't replace RSA
-or fix MD5 until you know where it lives. This tool automates that step for Python code. It can
+or fix MD5 until you know where it lives. This tool automates that step for **Python and Java**
+code. It can
 also write the result as a **CBOM** (cryptographic bill of materials) in the standard
 [CycloneDX 1.6](https://cyclonedx.org/capabilities/cbom/) format, so other tools can read it.
 
@@ -27,7 +28,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python -m cryptoinv scan PATH                     # a folder or a single .py file
+python -m cryptoinv scan PATH                     # a folder, or a single .py / .java file
 python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
 python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
@@ -38,7 +39,7 @@ python -m cryptoinv scan PATH --no-color          # plain text
 
 ```text
 Crypto inventory: crypto-playground
-15 Python file(s) scanned, 75 finding(s)
+15 file(s) scanned (15 Python), 75 finding(s)
 
 LEGACY - works today, plan a migration
   Ed25519 (signature)  [quantum-vulnerable]  - 14 places
@@ -141,6 +142,8 @@ of silently ignored.
 
 ## How detection works
 
+### Python
+
 The scanner uses Python's built-in [`ast`](https://docs.python.org/3/library/ast.html) module to
 parse each file into a syntax tree (the same first step Python takes before running code), then
 walks the tree:
@@ -159,13 +162,43 @@ Libraries covered: `hashlib`, `hmac`, `secrets`, `os.urandom`, `random`, `ssl`, 
 `verify=False`, [`cryptography`](https://cryptography.io) (including ML-KEM and ML-DSA),
 PyCryptodome (`Crypto` / `Cryptodome`), `bcrypt`, `argon2-cffi`, `passlib` and `blake3`.
 
+### Java
+
+Python has no built-in Java parser, so `.java` files are read as text in two steps:
+
+1. **Mask.** Comments, and the inside of every string, are blanked out in a copy of the file.
+   Every character keeps its position, so line numbers stay exact. A comment or string that only
+   *mentions* `MessageDigest.getInstance("MD5")` can't match.
+2. **Match.** Java's crypto API names algorithms as strings, so the scanner finds calls like
+   `Cipher.getInstance(...)`, `MessageDigest`, `Mac`, `Signature`, `KeyPairGenerator`,
+   `KeyAgreement`, `SecretKeyFactory`, `SSLContext` and `KEM`, then reads the real string and
+   looks it up in the `java` section of `rules.json`.
+
+What it understands:
+
+- **Cipher transformations:** `"AES/CBC/PKCS5Padding"` is AES + CBC. `"AES/GCM/NoPadding"` is
+  AES-GCM. A bare `"AES"` is flagged as **ECB**, because that's what Java silently uses when no
+  mode is given.
+- **Compound names:** `"SHA1withRSA"` is SHA-1 (BROKEN) + RSA. `"PBEWithMD5AndDES"` is MD5 + DES.
+- **Across lines:** `kpg = KeyPairGenerator.getInstance("RSA")` then `kpg.initialize(1024)`
+  gives RSA under 2048 bits. `new PBEKeySpec(pw, salt, 1000, 256)` sets the PBKDF2 grade.
+  Constants like `static final String ALG = "DES"` are resolved.
+- **Insecure randomness:** `new Random()`, `Math.random()`, `ThreadLocalRandom` and
+  `RandomStringUtils` used in a secret-sounding context (`generateToken()`, `apiKey = ...`).
+- **TLS:** old protocol versions in `SSLContext.getInstance` / `setEnabledProtocols`, trust-all
+  `checkServerTrusted() {}` managers, and hostname verifiers that always return `true`.
+- **Libraries:** the JDK (including ML-KEM / ML-DSA), Apache Commons `DigestUtils`, Guava
+  `Hashing`, and Bouncy Castle's ML-KEM / ML-DSA / SLH-DSA parameter specs.
+
 ### Limitations
 
 - It's static analysis: values computed at runtime (`key_size=bits`) can't be read, so those
   findings fall back to the algorithm's normal grade.
 - The `random`-for-secrets and password-hash checks are name-based heuristics. They can miss
   cases or occasionally flag harmless code.
-- Python only, for now.
+- Java is matched by text patterns, not fully parsed. Links across lines (a key-pair variable
+  and its `initialize` call) work within one file, not across files.
+- Python and Java only, for now.
 
 ## Tests
 
@@ -173,8 +206,9 @@ PyCryptodome (`Crypto` / `Cryptodome`), `bcrypt`, `argon2-cffi`, `passlib` and `
 python -m pytest
 ```
 
-The sample files in [`tests/samples/`](tests/samples) contain known weak and strong crypto. Each
-line ends with an `# expect: ...` comment naming what the scanner must find there, and the tests
+The sample files in [`tests/samples/`](tests/samples) (Python) and
+[`tests/samples_java/`](tests/samples_java) (Java) contain known weak and strong crypto. Each
+line ends with an `expect: ...` comment naming what the scanner must find there, and the tests
 check the scanner finds exactly that: nothing missed, nothing extra. CBOM output is checked
 against the official CycloneDX 1.6 schema. CI runs the suite on
 Python 3.10 to 3.14 (Linux) and Windows.
@@ -183,4 +217,6 @@ Python 3.10 to 3.14 (Linux) and Windows.
 
 - [x] Python scanning, grading and terminal report
 - [x] `--cbom out.json`: CycloneDX 1.6 CBOM output, schema-validated in the tests
-- [ ] More languages (Java, Go, JavaScript) and config files (TLS settings, certificates)
+- [x] Java scanning (JCA, Commons Codec, Guava, Bouncy Castle PQC)
+- [ ] More languages (JavaScript/TypeScript, Go)
+- [ ] Certificates and keys (.pem / .crt: key type, size and signature hash)

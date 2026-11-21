@@ -12,7 +12,9 @@ from cryptoinv import load_rules
 from cryptoinv.scanner import scan_path
 
 SAMPLES = Path(__file__).parent / "samples"
-EXPECT = re.compile(r"#\s*expect:\s*(.+)$")
+JAVA_SAMPLES = Path(__file__).parent / "samples_java"
+ALL_SAMPLES = sorted(SAMPLES.glob("*.py")) + sorted(JAVA_SAMPLES.glob("*.java"))
+EXPECT = re.compile(r"(?:#|//)\s*expect:\s*(.+)$")
 
 
 def expected_findings(path: Path) -> set[tuple[int, str]]:
@@ -24,7 +26,7 @@ def expected_findings(path: Path) -> set[tuple[int, str]]:
     return expected
 
 
-@pytest.mark.parametrize("sample", sorted(SAMPLES.glob("*.py")), ids=lambda p: p.name)
+@pytest.mark.parametrize("sample", ALL_SAMPLES, ids=lambda p: p.name)
 def test_sample_findings_match_expectations(sample):
     result = scan_path(sample)
     found = {(f.line, f.algorithm.id) for f in result.findings}
@@ -36,7 +38,7 @@ def test_sample_findings_match_expectations(sample):
 
 def test_every_expected_id_is_a_real_algorithm():
     rules = load_rules()
-    for sample in SAMPLES.glob("*.py"):
+    for sample in ALL_SAMPLES:
         for _, alg in expected_findings(sample):
             assert alg in rules.algorithms, f"{sample.name}: unknown id {alg}"
 

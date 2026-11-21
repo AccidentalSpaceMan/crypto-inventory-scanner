@@ -22,8 +22,10 @@ def render(result: ScanResult, color: bool = False) -> str:
     def paint(style: str, text: str) -> str:
         return f"{_COLORS[style]}{text}{_RESET}" if color else text
 
+    by_language = ", ".join(f"{n} {lang}" for lang, n in sorted(result.languages.items()))
     out = [paint("bold", f"Crypto inventory: {result.root}"),
-           f"{result.files_scanned} Python file(s) scanned, {len(result.findings)} finding(s)"]
+           f"{result.files_scanned} file(s) scanned{f' ({by_language})' if by_language else ''}, "
+           f"{len(result.findings)} finding(s)"]
     if result.errors:
         out.append(f"Skipped {len(result.errors)} file(s) that couldn't be parsed:")
         out += [f"  {path}: {why}" for path, why in result.errors]

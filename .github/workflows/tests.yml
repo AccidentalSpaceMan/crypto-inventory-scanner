@@ -83,4 +83,13 @@ jobs:
             echo "Expected --fail-on broken to exit 1 on the deliberately weak samples"
             exit 1
           fi
+          # diff: going from the weak samples to this project's clean code is better (exit 0),
+          # going the other way is worse (exit 1).
+          cryptoinv scan "$GITHUB_WORKSPACE/tests/samples" --no-color --cbom weak.json > /dev/null
+          cryptoinv scan "$GITHUB_WORKSPACE/cryptoinv" --no-color --cbom clean.json > /dev/null
+          cryptoinv diff weak.json clean.json --no-color --fail-on broken
+          if cryptoinv diff clean.json weak.json --no-color --fail-on broken > /dev/null; then
+            echo "Expected diff --fail-on broken to exit 1 when BROKEN crypto is added"
+            exit 1
+          fi
           echo "The installed package works"

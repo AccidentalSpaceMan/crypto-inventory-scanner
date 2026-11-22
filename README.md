@@ -56,6 +56,7 @@ cryptoinv scan PATH --exclude tests     # skip a folder or pattern (repeatable)
 cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
 cryptoinv scan PATH --rules my.json     # grade with your own rules file
 cryptoinv scan PATH --no-color          # plain text
+cryptoinv diff OLD.json NEW.json        # compare two CBOMs: what got better or worse
 ```
 
 Without installing, `python -m cryptoinv` works the same way from the source folder.
@@ -177,6 +178,51 @@ CBOM of my playground project. One component from it:
 ```
 
 The tests validate every generated CBOM against the official CycloneDX 1.6 JSON schema.
+
+## Comparing two scans (diff)
+
+One scan is a snapshot. Moving off weak and quantum-vulnerable crypto takes months, so you also
+need the trend: what's gone, what crept back in, and whether the number of quantum-vulnerable
+places is going down. `cryptoinv diff` compares two CBOMs, for example last month's and today's,
+or the main branch's and a pull request's:
+
+```bash
+cryptoinv scan . --cbom before.json
+# ...change the code...
+cryptoinv scan . --cbom after.json
+cryptoinv diff before.json after.json
+```
+
+```text
+Worse - new or growing BROKEN / LEGACY crypto
+  ^ SHA-1 (BROKEN)  1 -> 2 places
+      now also in: b.py
+
+Better - BROKEN / LEGACY crypto removed or shrinking
+  - MD5 (BROKEN)  gone (was 1 place)
+
+Other changes (CURRENT crypto, certificates, moved code)
+  + SHA-3 / SHAKE (CURRENT)  new: 1 place
+      in: b.py
+
+Summary: BROKEN 2 -> 1 algorithm (2 -> 2 places) | LEGACY 1 -> 1 algorithm (1 -> 1 place) | ...
+Verdict: MIXED (1 thing worse, 1 thing better)
+```
+
+- It compares **algorithms, not lines**. Editing a file shifts line numbers, so for each
+  algorithm it compares how many places use it and which files they're in. Moving code around
+  isn't reported as a change in risk.
+- **Worse** means a BROKEN or LEGACY algorithm is new, used in more places, or was regraded to a
+  worse grade (after a rules change). **Better** is the opposite. Changes to CURRENT crypto are
+  listed separately. Every quantum-vulnerable algorithm is graded LEGACY or BROKEN, so quantum
+  risk is covered by the same rule.
+- Certificates are matched by subject, issuer and expiry, so moving a certificate file isn't a
+  change but renewing it is.
+- `--fail-on broken` (or `legacy`) exits with code 1 only if things got worse at that grade, so
+  CI can block a pull request that *adds* weak crypto without failing on crypto that was
+  already there.
+- It also reads CBOMs from other tools. Without our `cryptoinv:grade` property it can't say
+  better or worse, so those changes are listed under "Other".
 
 ## How grading works
 
@@ -371,6 +417,7 @@ Windows and runs the `cryptoinv` command from outside the repository.
 - [x] Certificates and keys (key type and size, signature hash, expiry, committed private keys)
 - [x] SARIF output and GitHub code scanning, `--exclude`, `cryptoinv: ignore` comments
 - [x] Installable package (`pip install` from GitHub, a `cryptoinv` command, MIT license)
+- [x] `cryptoinv diff`: compare two CBOMs to track progress over time
 
 ## License
 

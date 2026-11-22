@@ -1,4 +1,4 @@
-"""Command-line interface: python -m cryptoinv scan PATH"""
+"""Command-line interface: cryptoinv scan PATH  and  cryptoinv diff OLD NEW"""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +7,7 @@ import sys
 
 from . import __version__
 from .cbom import write_cbom
+from .diff import CbomError, diff_files, render_diff
 from .report import render
 from .rules import GRADES, RulesError, load_rules
 from .sarif import write_sarif
@@ -43,6 +44,17 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--sarif-min-grade", choices=["broken", "legacy", "current"], default="legacy",
                       help="least severe grade to include in the SARIF file (default: legacy)")
     scan.add_argument("--no-color", action="store_true", help="plain text output")
+
+    diff = sub.add_parser("diff", help="compare two CBOMs to see what got better or worse",
+                          description="Compare two CBOM files written by 'cryptoinv scan --cbom' "
+                                      "(e.g. last month's and today's, or main's and a pull "
+                                      "request's) and list what got better or worse.")
+    diff.add_argument("old", help="the earlier CBOM file")
+    diff.add_argument("new", help="the later CBOM file")
+    diff.add_argument("--fail-on", choices=["broken", "legacy"],
+                      help="exit with code 1 if crypto this bad or worse is new or used in more "
+                           "places (useful in CI)")
+    diff.add_argument("--no-color", action="store_true", help="plain text output")
     return parser
 
 
@@ -61,9 +73,39 @@ def _enable_windows_colors() -> None:
         pass
 
 
+def _use_color(args) -> bool:
+    # Scanned code can contain any characters; never crash printing one the console can't show.
+    try:
+        sys.stdout.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
+    color = not args.no_color and "NO_COLOR" not in os.environ and sys.stdout.isatty()
+    if color:
+        _enable_windows_colors()
+    return color
+
+
+def _diff(parser: argparse.ArgumentParser, args) -> int:
+    try:
+        result = diff_files(args.old, args.new)
+    except FileNotFoundError as e:
+        parser.error(f"{e.filename} does not exist")
+    except CbomError as e:
+        parser.error(str(e))
+    print(render_diff(result, color=_use_color(args)))
+    if args.fail_on:
+        limit = GRADES.index(args.fail_on.upper())
+        if any(c.asset.grade in GRADES and GRADES.index(c.asset.grade) <= limit
+               for c in result.by_effect("worse")):
+            return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "diff":
+        return _diff(parser, args)
 
     try:
         rules = load_rules(args.rules)
@@ -74,15 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError:
         parser.error(f"{args.path} does not exist")
 
-    # Scanned code can contain any characters; never crash printing one the console can't show.
-    try:
-        sys.stdout.reconfigure(errors="replace")
-    except (AttributeError, ValueError):
-        pass
-    color = not args.no_color and "NO_COLOR" not in os.environ and sys.stdout.isatty()
-    if color:
-        _enable_windows_colors()
-    print(render(result, color=color))
+    print(render(result, color=_use_color(args)))
 
     if args.cbom:
         try:

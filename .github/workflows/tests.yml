@@ -51,3 +51,36 @@ jobs:
       # (The few lines that name key types only to recognise them carry "cryptoinv: ignore".)
       - name: Scan this project's own code
         run: python -m cryptoinv scan cryptoinv --no-color --fail-on legacy --cbom self.cbom.json --sarif self.sarif
+
+  # Install the project as a package, the way a user would, and run the cryptoinv command from
+  # outside the repository so it can't accidentally use the source files.
+  package:
+    name: Install as a package on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install the package (not editable)
+        run: python -m pip install ".[keys]"
+
+      - name: Run the installed command
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          cryptoinv --version
+          cryptoinv scan "$GITHUB_WORKSPACE/cryptoinv" --no-color --fail-on legacy
+          if cryptoinv scan "$GITHUB_WORKSPACE/tests/samples" --no-color --fail-on broken > /dev/null; then
+            echo "Expected --fail-on broken to exit 1 on the deliberately weak samples"
+            exit 1
+          fi
+          echo "The installed package works"

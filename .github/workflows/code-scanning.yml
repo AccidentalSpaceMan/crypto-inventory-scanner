@@ -5,12 +5,10 @@
 # (Security > Code scanning), and on the changed lines of pull requests.
 #
 # To scan another repository you own, copy this file there and replace the Install and Scan
-# steps with these, which fetch the scanner next to your code:
+# steps with these two (add --exclude for any test fixtures or vendored code):
 #
-#   - uses: actions/checkout@v4
-#     with: { repository: AccidentalSpaceMan/crypto-inventory-scanner, path: .crypto-scanner }
-#   - run: pip install cryptography
-#   - run: PYTHONPATH=.crypto-scanner python -m cryptoinv scan . --exclude .crypto-scanner --sarif crypto-inventory.sarif
+#   - run: pip install "crypto-inventory-scanner[keys] @ git+https://github.com/AccidentalSpaceMan/crypto-inventory-scanner"
+#   - run: cryptoinv scan . --no-color --sarif crypto-inventory.sarif
 
 name: Crypto inventory
 

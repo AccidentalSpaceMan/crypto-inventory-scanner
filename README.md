@@ -14,31 +14,51 @@ also write the result as a **CBOM** (cryptographic bill of materials) in the sta
 The scanner **reads** files. It never runs code, never connects to anything, never asks for
 passwords and never prints key material. Only scan code you own or have permission to scan.
 
-## Setup
+## Install
 
-Scanning code needs nothing beyond Python 3.10+. Reading certificate and key files needs the
-[`cryptography`](https://cryptography.io) library. Without it, those files are listed as skipped,
-with an install hint. `requirements.txt` installs it along with the test tools: `pytest`, the
-official CycloneDX library (to validate CBOM output), `jsonschema` (to validate SARIF output) and
-`bcrypt` (used by one key test).
+Needs Python 3.10+. Install straight from GitHub into a virtual environment, and you get the
+`cryptoinv` command:
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate        # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+pip install "crypto-inventory-scanner[keys] @ git+https://github.com/AccidentalSpaceMan/crypto-inventory-scanner"
+cryptoinv --version
 ```
+
+Scanning code needs no other packages. The optional `[keys]` extra adds the
+[`cryptography`](https://cryptography.io) library, which is needed only to read certificate and key
+files. Leave it out (`pip install "git+https://github.com/AccidentalSpaceMan/crypto-inventory-scanner"`)
+and those files are listed as skipped, with an install hint.
+
+### Working on the code
+
+```bash
+git clone https://github.com/AccidentalSpaceMan/crypto-inventory-scanner
+cd crypto-inventory-scanner
+python -m venv .venv
+.venv\Scripts\activate        # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+python -m cryptoinv --version   # runs from the source folder, no install needed
+```
+
+`requirements.txt` installs `cryptography` along with the test tools: `pytest`, the official
+CycloneDX library (to validate CBOM output), `jsonschema` (to validate SARIF output) and `bcrypt`
+(used by one key test). Run the tests with `python -m pytest`.
 
 ## Usage
 
 ```bash
-python -m cryptoinv scan PATH                     # a folder, or a single source / certificate / key file
-python -m cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
-python -m cryptoinv scan PATH --sarif out.sarif   # also write SARIF 2.1.0 (GitHub code scanning)
-python -m cryptoinv scan PATH --exclude tests     # skip a folder or pattern (repeatable)
-python -m cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
-python -m cryptoinv scan PATH --rules my.json     # grade with your own rules file
-python -m cryptoinv scan PATH --no-color          # plain text
+cryptoinv scan PATH                     # a folder, or a single source / certificate / key file
+cryptoinv scan PATH --cbom out.json     # also write a CycloneDX 1.6 CBOM
+cryptoinv scan PATH --sarif out.sarif   # also write SARIF 2.1.0 (GitHub code scanning)
+cryptoinv scan PATH --exclude tests     # skip a folder or pattern (repeatable)
+cryptoinv scan PATH --fail-on broken    # exit code 1 if anything BROKEN is found (for CI)
+cryptoinv scan PATH --rules my.json     # grade with your own rules file
+cryptoinv scan PATH --no-color          # plain text
 ```
+
+Without installing, `python -m cryptoinv` works the same way from the source folder.
 
 ### Example: scanning my [Crypto Primitive Playground](https://github.com/AccidentalSpaceMan/crypto-primitive-playground)
 
@@ -95,7 +115,10 @@ SARIF file to GitHub code scanning:
 - CURRENT findings are left out by default, since they're fine. Use
   `--sarif-min-grade current` to include them as notes, or `broken` for errors only.
 
-The workflow file explains how to copy it into another repository you own.
+To scan another repository you own, copy that workflow there and replace its Install and Scan steps
+with `pip install "crypto-inventory-scanner[keys] @ git+https://github.com/AccidentalSpaceMan/crypto-inventory-scanner"`
+and `cryptoinv scan . --no-color --sarif crypto-inventory.sarif` (the workflow file shows exactly
+where).
 
 ### Excluding files and reviewed lines
 
@@ -335,7 +358,8 @@ check the scanner finds exactly that: nothing missed, nothing extra. Certificate
 it again with SHA-1, giving a genuine old-style certificate to test against.) CBOM output is checked
 against the official CycloneDX 1.6 schema, and SARIF output against the official OASIS SARIF
 2.1.0 schema (kept in [`tests/schemas/`](tests/schemas)). CI runs the suite on
-Python 3.10 to 3.14 (Linux) and Windows.
+Python 3.10 to 3.14 (Linux) and Windows, and a separate job installs the package on Linux and
+Windows and runs the `cryptoinv` command from outside the repository.
 
 ## Roadmap
 
@@ -346,4 +370,8 @@ Python 3.10 to 3.14 (Linux) and Windows.
 - [x] Go scanning (standard library, golang.org/x/crypto, CIRCL post-quantum)
 - [x] Certificates and keys (key type and size, signature hash, expiry, committed private keys)
 - [x] SARIF output and GitHub code scanning, `--exclude`, `cryptoinv: ignore` comments
-- [ ] Installable package (`pip install`, a `cryptoinv` command) and tagged releases
+- [x] Installable package (`pip install` from GitHub, a `cryptoinv` command, MIT license)
+
+## License
+
+[MIT](LICENSE): free to use, copy and change, as long as the copyright notice is kept.

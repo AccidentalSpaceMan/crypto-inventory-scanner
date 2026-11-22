@@ -14,6 +14,8 @@ also write the result as a **CBOM** (cryptographic bill of materials) in the sta
 The scanner **reads** files. It never runs code, never connects to anything, never asks for
 passwords and never prints key material. Only scan code you own or have permission to scan.
 
+![cryptoinv scan output: BROKEN, LEGACY and CURRENT sections for a small demo app, each with why, fix and file:line](docs/scan-demo.png)
+
 ## Install
 
 Needs Python 3.10+. Install straight from GitHub into a virtual environment, and you get the
@@ -193,21 +195,7 @@ cryptoinv scan . --cbom after.json
 cryptoinv diff before.json after.json
 ```
 
-```text
-Worse - new or growing BROKEN / LEGACY crypto
-  ^ SHA-1 (BROKEN)  1 -> 2 places
-      now also in: b.py
-
-Better - BROKEN / LEGACY crypto removed or shrinking
-  - MD5 (BROKEN)  gone (was 1 place)
-
-Other changes (CURRENT crypto, certificates, moved code)
-  + SHA-3 / SHAKE (CURRENT)  new: 1 place
-      in: b.py
-
-Summary: BROKEN 2 -> 1 algorithm (2 -> 2 places) | LEGACY 1 -> 1 algorithm (1 -> 1 place) | ...
-Verdict: MIXED (1 thing worse, 1 thing better)
-```
+![cryptoinv diff output: weak crypto removed in green, a new SHA-1 HMAC flagged in red, and a MIXED verdict](docs/diff-demo.png)
 
 - It compares **algorithms, not lines**. Editing a file shifts line numbers, so for each
   algorithm it compares how many places use it and which files they're in. Moving code around

@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 
+from . import __version__
 from .cbom import write_cbom
 from .report import render
 from .rules import GRADES, RulesError, load_rules
@@ -19,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="cryptoinv",
         description=f"Inventory the cryptography in {_WHAT} and grade each algorithm "
                     "BROKEN / LEGACY / CURRENT. The scanner reads files; it never runs code.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     scan = sub.add_parser("scan", help=f"scan {_WHAT}",
